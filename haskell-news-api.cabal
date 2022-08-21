@@ -32,6 +32,8 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , beam-core
+    , beam-postgres
     , bytestring
     , containers
     , servant-server
@@ -50,6 +52,8 @@ executable haskell-news-api-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , beam-core
+    , beam-postgres
     , bytestring
     , containers
     , haskell-news-api
@@ -70,6 +74,8 @@ test-suite haskell-news-api-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , beam-core
+    , beam-postgres
     , bytestring
     , containers
     , haskell-news-api

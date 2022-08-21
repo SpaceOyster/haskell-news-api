@@ -28,6 +28,8 @@ dependencies:
 - text
 - time
 - containers
+- beam-core
+- beam-postgres
 
 library:
   source-dirs: src
