@@ -6,7 +6,6 @@
 
 module API.Entities.Category where
 
-import Data.Set
 import Data.Text
 import Database.Beam
 
