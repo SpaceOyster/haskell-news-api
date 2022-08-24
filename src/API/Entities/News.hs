@@ -19,7 +19,7 @@ data ArticleT f = Article
     _articleTitle :: Columnar f Text,
     _articleCreatedAt :: Columnar f UTCTime,
     _articleAuthor :: PrimaryKey UserT f,
-    _articleCategory :: PrimaryKey CategoryT f,
+    _articleCategory :: PrimaryKey CategoryT (Nullable f),
     _articleBody :: Columnar f Text,
     -- _articleImages :: PrimaryKey ImageT f,
     _articleIsPublished :: Columnar f Bool
