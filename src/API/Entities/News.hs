@@ -10,7 +10,6 @@ import API.Entities.Category
 import API.Entities.Image
 import API.Entities.User
 import Data.Int
-import Data.Set
 import Data.Text
 import Data.Time.Clock
 import Database.Beam
