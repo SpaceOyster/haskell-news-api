@@ -21,7 +21,7 @@ data ArticleT f = Article
     _articleAuthor :: PrimaryKey UserT f,
     _articleCategory :: PrimaryKey CategoryT f,
     _articleBody :: Columnar f Text,
-    _articleImages :: PrimaryKey ImageT f,
+    -- _articleImages :: PrimaryKey ImageT f,
     _articleIsPublished :: Columnar f Bool
   }
   deriving (Generic, Beamable)
