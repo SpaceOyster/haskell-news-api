@@ -11,7 +11,7 @@ import Database.Beam
 
 data CategoryT f = Category
   { _categoryName :: Columnar f Text,
-    _categoryParentCategory :: Columnar f (Maybe Text)
+    _categoryParentCategory :: PrimaryKey CategoryT (Nullable f)
   }
   deriving (Generic, Beamable)
 
@@ -30,4 +30,8 @@ type CategoryId = PrimaryKey CategoryT Identity
 
 deriving instance Show (PrimaryKey CategoryT Identity)
 
+deriving instance Show (PrimaryKey CategoryT (Nullable Identity))
+
 deriving instance Eq (PrimaryKey CategoryT Identity)
+
+deriving instance Eq (PrimaryKey CategoryT (Nullable Identity))
