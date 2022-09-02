@@ -30,6 +30,7 @@ library
       API.Images
       API.News
       API.Users
+      App.Env
       DB
       Entities.Category
       Entities.Image
