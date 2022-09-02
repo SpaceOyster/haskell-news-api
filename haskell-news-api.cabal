@@ -31,6 +31,7 @@ library
       API.News
       API.Users
       App.Env
+      App.Monad
       DB
       Entities.Category
       Entities.Image
