@@ -25,6 +25,10 @@ source-repository head
 
 library
   exposed-modules:
+      API.Categories
+      API.Images
+      API.News
+      API.Users
       DB
       Entities.Category
       Entities.Image
