@@ -4,10 +4,11 @@
 
 module API.Images where
 
+import App.Monad
 import Data.Text
 import Servant
 
 type ImagesAPI = Get '[JSON] Text :<|> PostCreated '[JSON] Text
 
-images :: Server ImagesAPI
+images :: ServerT ImagesAPI App
 images = return "GET categories endpoint" :<|> return "POST categories endpoint"
