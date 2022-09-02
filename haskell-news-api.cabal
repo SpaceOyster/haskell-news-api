@@ -48,6 +48,7 @@ library
     , beam-core
     , beam-postgres
     , bytestring
+    , configurator
     , containers
     , exceptions
     , mtl
@@ -71,6 +72,7 @@ executable haskell-news-api-exe
     , beam-core
     , beam-postgres
     , bytestring
+    , configurator
     , containers
     , exceptions
     , haskell-news-api
@@ -96,6 +98,7 @@ test-suite haskell-news-api-test
     , beam-core
     , beam-postgres
     , bytestring
+    , configurator
     , containers
     , exceptions
     , haskell-news-api

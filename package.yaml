@@ -33,6 +33,7 @@ dependencies:
 - aeson
 - mtl
 - exceptions
+- configurator
 
 library:
   source-dirs: src
