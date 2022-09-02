@@ -4,7 +4,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module API.Entities.Image where
+module Entities.Image where
 
 import Data.ByteString
 import Data.Int

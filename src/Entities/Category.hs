@@ -4,7 +4,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module API.Entities.Category where
+module Entities.Category where
 
 import Data.Text
 import Database.Beam

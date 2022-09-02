@@ -25,11 +25,11 @@ source-repository head
 
 library
   exposed-modules:
-      API.Entities.Category
-      API.Entities.Image
-      API.Entities.News
-      API.Entities.User
       DB
+      Entities.Category
+      Entities.Image
+      Entities.News
+      Entities.User
       Lib
   other-modules:
       Paths_haskell_news_api

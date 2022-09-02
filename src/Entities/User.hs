@@ -4,7 +4,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module API.Entities.User where
+module Entities.User where
 
 import Data.ByteString
 import Data.Int

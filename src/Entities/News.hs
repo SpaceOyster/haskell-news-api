@@ -4,15 +4,15 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module API.Entities.News where
+module Entities.News where
 
-import API.Entities.Category
-import API.Entities.Image
-import API.Entities.User
 import Data.Int
 import Data.Text
 import Data.Time.Clock
 import Database.Beam
+import Entities.Category
+import Entities.Image
+import Entities.User
 
 data ArticleT f = Article
   { _articleId :: Columnar f Int32,

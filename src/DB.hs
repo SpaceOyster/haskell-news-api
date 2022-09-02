@@ -3,11 +3,11 @@
 
 module DB where
 
-import API.Entities.Category
-import API.Entities.Image
-import API.Entities.News
-import API.Entities.User
 import Database.Beam
+import Entities.Category
+import Entities.Image
+import Entities.News
+import Entities.User
 
 data NewsDB f = NewsDB
   { _newsImages :: f (TableEntity ImageT),
