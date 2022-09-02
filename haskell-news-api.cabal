@@ -40,11 +40,14 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , beam-core
     , beam-postgres
     , bytestring
     , containers
+    , exceptions
+    , mtl
     , servant-server
     , text
     , time
@@ -60,12 +63,15 @@ executable haskell-news-api-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , beam-core
     , beam-postgres
     , bytestring
     , containers
+    , exceptions
     , haskell-news-api
+    , mtl
     , servant-server
     , text
     , time
@@ -82,12 +88,15 @@ test-suite haskell-news-api-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , beam-core
     , beam-postgres
     , bytestring
     , containers
+    , exceptions
     , haskell-news-api
+    , mtl
     , servant-server
     , text
     , time

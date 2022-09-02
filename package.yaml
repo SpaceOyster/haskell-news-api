@@ -30,6 +30,9 @@ dependencies:
 - containers
 - beam-core
 - beam-postgres
+- aeson
+- mtl
+- exceptions
 
 library:
   source-dirs: src
