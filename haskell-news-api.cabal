@@ -30,6 +30,7 @@ library
       API.Images
       API.News
       API.Users
+      App.Config
       App.Env
       App.Monad
       DB
