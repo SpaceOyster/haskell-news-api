@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      API
       API.Categories
       API.Images
       API.News
@@ -34,7 +35,6 @@ library
       Entities.Image
       Entities.News
       Entities.User
-      Lib
   other-modules:
       Paths_haskell_news_api
   hs-source-dirs:
