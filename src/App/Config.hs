@@ -16,6 +16,15 @@ newtype ServerConfig = ServerConfig
   }
   deriving (Show)
 
+data PostgresConfig = PostgresConfig
+  { pgHost :: String,
+    pgPort :: Int,
+    pgUser :: String,
+    pgPassword :: String,
+    pgDatabaseName :: String
+  }
+  deriving (Show)
+
 readConfigFromFile :: (MonadIO m, MonadFail m) => FilePath -> m AppConfig
 readConfigFromFile cfgPath =
   liftIO $ C.load [C.Required cfgPath] >>= toAppConfig
