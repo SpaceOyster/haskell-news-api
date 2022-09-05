@@ -38,3 +38,12 @@ toServerConfig :: C.Config -> IO ServerConfig
 toServerConfig cfg = do
   port <- C.require cfg "port"
   return $ ServerConfig {..}
+
+toPostgresConfig :: C.Config -> IO PostgresConfig
+toPostgresConfig cfg = do
+  pgHost <- C.require cfg "host"
+  pgPort <- C.require cfg "port"
+  pgUser <- C.require cfg "dbUser"
+  pgPassword <- C.require cfg "dbPassword"
+  pgDatabaseName <- C.require cfg "dbName"
+  return $ PostgresConfig {..}
