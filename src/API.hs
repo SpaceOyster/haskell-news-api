@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Lib where
+module API where
 
 import API.Categories
 import API.Images
