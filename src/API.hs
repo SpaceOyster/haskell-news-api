@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API where
@@ -8,11 +7,8 @@ import API.Categories
 import API.Images
 import API.News
 import API.Users
-import App.Env
 import App.Monad
-import Data.Text
 import Network.Wai
-import Network.Wai.Handler.Warp
 import Servant
 
 type AppAPI =
