@@ -12,7 +12,7 @@ newtype AppConfig = AppConfig {serverConfig :: ServerConfig}
   deriving (Show)
 
 newtype ServerConfig = ServerConfig
-  { port :: Integer
+  { port :: Int
   }
   deriving (Show)
 
