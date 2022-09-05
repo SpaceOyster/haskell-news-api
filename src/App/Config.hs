@@ -7,8 +7,9 @@ import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
+import Database.Beam.Postgres
 
-newtype AppConfig = AppConfig {serverConfig :: ServerConfig}
+data AppConfig = AppConfig {serverConfig :: ServerConfig, postgresConfig :: PostgresConfig}
   deriving (Show)
 
 newtype ServerConfig = ServerConfig
@@ -32,6 +33,7 @@ readConfigFromFile cfgPath =
 toAppConfig :: C.Config -> IO AppConfig
 toAppConfig cfg = do
   serverConfig <- toServerConfig $ C.subconfig "API" cfg
+  postgresConfig <- toPostgresConfig $ C.subconfig "Database" cfg
   return $ AppConfig {..}
 
 toServerConfig :: C.Config -> IO ServerConfig
