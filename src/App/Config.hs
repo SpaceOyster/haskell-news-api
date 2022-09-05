@@ -49,3 +49,13 @@ toPostgresConfig cfg = do
   pgPassword <- C.require cfg "dbPassword"
   pgDatabaseName <- C.require cfg "dbName"
   return $ PostgresConfig {..}
+
+toPostgresConnectInfo :: PostgresConfig -> ConnectInfo
+toPostgresConnectInfo pgConf =
+  ConnectInfo
+    { connectHost = pgHost pgConf,
+      connectPort = fromIntegral $ pgPort pgConf,
+      connectUser = pgUser pgConf,
+      connectPassword = pgPassword pgConf,
+      connectDatabase = pgDatabaseName pgConf
+    }
