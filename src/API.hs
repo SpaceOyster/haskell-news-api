@@ -36,6 +36,3 @@ appServer env = hoistServer api (appToHandler env) server
 
 app :: AppEnv -> Application
 app = serve api . appServer
-
-main :: IO ()
-main = run 8081 (app Env)
