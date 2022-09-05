@@ -1,3 +1,10 @@
 module App.Config where
 
-data AppConfig = AppConfig {}
+
+newtype AppConfig = AppConfig {serverConfig :: ServerConfig}
+  deriving (Show)
+
+newtype ServerConfig = ServerConfig
+  { port :: Integer
+  }
+  deriving (Show)
