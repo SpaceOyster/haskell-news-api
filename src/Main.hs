@@ -1,12 +1,15 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Main where
 
 import API (app)
 import qualified App.Config as C
-import App.Env (Env (Env))
-import App.Monad
+import App.Env (Env (Env, dbConnection))
+import App.Monad (AppEnv)
 import Control.Monad.Catch (SomeException, catchAll)
-import Data.Function
+import Data.Function ((&))
 import Data.List (intercalate)
+import Database.Beam.Postgres (connect)
 import Network.Wai.Handler.Warp (run)
 import qualified System.Environment as E
 import qualified System.Exit as Exit (die)
@@ -28,7 +31,9 @@ getConfig = do
   C.readConfigFromFile cfgPath
 
 initiateEnv :: C.AppConfig -> IO AppEnv
-initiateEnv _cfg = return Env
+initiateEnv cfg = do
+  dbConnection <- connect $ C.toPostgresConnectInfo $ C.postgresConfig cfg
+  return $ Env {..}
 
 usagePrompt :: String
 usagePrompt =
