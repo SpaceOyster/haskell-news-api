@@ -38,6 +38,7 @@ library
       Entities.Image
       Entities.News
       Entities.User
+      Handlers.Database
       Main
   other-modules:
       Paths_haskell_news_api
