@@ -4,12 +4,13 @@ module Main where
 
 import API (app)
 import qualified App.Config as C
-import App.Env (Env (Env, dbConnection))
+import App.Env (Env (Env, dbHandle))
 import App.Monad (AppEnv)
 import Control.Monad.Catch (SomeException, catchAll)
 import Data.Function ((&))
 import Data.List (intercalate)
 import Database.Beam.Postgres (connect)
+import Handlers.Database
 import Network.Wai.Handler.Warp (run)
 import qualified System.Environment as E
 import qualified System.Exit as Exit (die)
@@ -32,7 +33,7 @@ getConfig = do
 
 initiateEnv :: C.AppConfig -> IO AppEnv
 initiateEnv cfg = do
-  dbConnection <- connect $ C.toPostgresConnectInfo $ C.postgresConfig cfg
+  dbHandle <- newPostgresHandler $ C.toPostgresConnectInfo $ C.postgresConfig cfg
   return $ Env {..}
 
 usagePrompt :: String
