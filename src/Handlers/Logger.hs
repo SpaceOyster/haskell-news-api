@@ -4,6 +4,7 @@
 module Handlers.Logger
   ( module Handlers.Logger.Internal,
     LoggerConfig (..),
+    fromConfig,
     withHandle,
     withHandlePure,
   )
