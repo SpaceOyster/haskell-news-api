@@ -32,6 +32,7 @@ library
       API.Users
       App.Config
       App.Env
+      App.Error
       App.Monad
       DB
       Entities.Category
