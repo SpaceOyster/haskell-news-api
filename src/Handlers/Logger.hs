@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Handlers.Logger
   ( module Handlers.Logger.Internal,
@@ -9,6 +10,8 @@ module Handlers.Logger
 where
 
 import Control.Monad (when)
+import Data.Configurator as C
+import Data.Configurator.Types as C
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import qualified Data.Text as T (Text)
 import qualified Effects.Log as Log (Priority (..), Verbosity)
@@ -21,6 +24,12 @@ data LoggerConfig = LoggerConfig
     verbosity :: Log.Verbosity
   }
   deriving (Show)
+
+fromConfig :: C.Config -> IO LoggerConfig
+fromConfig cfg = do
+  file <- C.lookup cfg "file"
+  verbosity <- C.lookupDefault Log.Info cfg "verbosity"
+  return $ LoggerConfig {..}
 
 withHandle :: LoggerConfig -> (Handle -> IO ()) -> IO ()
 withHandle LoggerConfig {..} = case file of
