@@ -9,7 +9,6 @@ import App.Monad (AppEnv)
 import Control.Monad.Catch (SomeException, catchAll)
 import Data.Function ((&))
 import Data.List (intercalate)
-import Database.Beam.Postgres (connect)
 import Handlers.Database
 import Network.Wai.Handler.Warp (run)
 import qualified System.Environment as E
