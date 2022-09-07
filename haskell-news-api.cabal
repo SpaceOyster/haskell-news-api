@@ -35,6 +35,7 @@ library
       App.Error
       App.Monad
       DB
+      Effects.Log
       Entities.Category
       Entities.Image
       Entities.News
