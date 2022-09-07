@@ -4,7 +4,7 @@ module Main where
 
 import API (app)
 import qualified App.Config as C
-import App.Env (Env (Env, dbHandle))
+import App.Env (Env (Env, envDatabase))
 import App.Monad (AppEnv)
 import Control.Monad.Catch (SomeException, catchAll)
 import Data.Function ((&))
@@ -33,7 +33,7 @@ getConfig = do
 
 initiateEnv :: C.AppConfig -> IO AppEnv
 initiateEnv cfg = do
-  dbHandle <- newPostgresHandler $ C.toPostgresConnectInfo $ C.postgresConfig cfg
+  envDatabase <- newPostgresHandler $ C.toPostgresConnectInfo $ C.postgresConfig cfg
   return $ Env {..}
 
 usagePrompt :: String

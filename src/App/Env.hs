@@ -6,4 +6,4 @@ import Data.Kind (Type)
 import Database.Beam.Postgres
 import Handlers.Database as DB
 
-data Env (m :: Type -> Type) = Env {dbHandle :: DB.Handle}
+data Env (m :: Type -> Type) = Env {envDatabase :: DB.Handle}
