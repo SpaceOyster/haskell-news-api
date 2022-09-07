@@ -41,6 +41,10 @@ library
       Entities.News
       Entities.User
       Handlers.Database
+      Handlers.Logger
+      Handlers.Logger.File
+      Handlers.Logger.Internal
+      Handlers.Logger.StdOut
       Main
   other-modules:
       Paths_haskell_news_api
