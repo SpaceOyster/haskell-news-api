@@ -3,7 +3,10 @@
 module App.Env where
 
 import Data.Kind (Type)
-import Database.Beam.Postgres
 import Handlers.Database as DB
+import Handlers.Logger as Logger
 
-data Env (m :: Type -> Type) = Env {envDatabase :: DB.Handle}
+data Env (m :: Type -> Type) = Env
+  { envLogger :: Logger.Handle,
+    envDatabase :: DB.Handle
+  }
