@@ -3,11 +3,11 @@
 
 module App.Config where
 
-import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Database.Beam.Postgres
+import Effects.Log as Log
 import Handlers.Logger as Logger
 
 data AppConfig = AppConfig
@@ -37,10 +37,16 @@ readConfigFromFile cfgPath =
 
 toAppConfig :: C.Config -> IO AppConfig
 toAppConfig cfg = do
-  loggerConfig <- Logger.fromConfig $ C.subconfig "logger" cfg
+  loggerConfig <- toLoggerConfig $ C.subconfig "logger" cfg
   serverConfig <- toServerConfig $ C.subconfig "API" cfg
   postgresConfig <- toPostgresConfig $ C.subconfig "Database" cfg
   return $ AppConfig {..}
+
+toLoggerConfig :: C.Config -> IO LoggerConfig
+toLoggerConfig cfg = do
+  file <- C.lookup cfg "file"
+  verbosity <- C.lookupDefault Log.Info cfg "verbosity"
+  return $ LoggerConfig {..}
 
 toServerConfig :: C.Config -> IO ServerConfig
 toServerConfig cfg = do
