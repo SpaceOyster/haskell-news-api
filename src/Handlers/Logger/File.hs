@@ -12,7 +12,7 @@ import App.Error (AppError, loggerError)
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Control.Monad (when, (>=>))
 import Control.Monad.Catch (catch, throwM)
-import Data.Text as T (Text, pack)
+import Data.Text.Extended as T (Text, tshow)
 import qualified Data.Text.IO as T (hPutStrLn)
 import qualified Effects.Log as Log (Priority, Verbosity, composeMessage)
 import Handlers.Logger.Internal
@@ -31,7 +31,7 @@ new verbosity hFile = new_ verbosity hFile `catch` rethrow
   where
     rethrow = throwM . convert
     convert :: IOError -> AppError
-    convert = loggerError . ("Logger Initiation Error: " <>) . T.pack . show
+    convert = loggerError . ("Logger Initiation Error: " <>) . T.tshow
 
 new_ :: Log.Verbosity -> IO.Handle -> IO Handle
 new_ verbosity hFile = do
@@ -42,7 +42,7 @@ new_ verbosity hFile = do
   where
     rethrow = throwM . convert
     convert :: IOError -> AppError
-    convert = loggerError . ("Logger failed to append to file: " <>) . T.pack . show
+    convert = loggerError . ("Logger failed to append to file: " <>) . T.tshow
 
 doLog_ :: MVar () -> IO.Handle -> Log.Priority -> Text -> IO ()
 doLog_ mutex hFile priority t =

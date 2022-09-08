@@ -13,7 +13,7 @@ import App.Error (AppError, loggerError)
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Control.Monad.Catch (catch, throwM)
-import Data.Text as T (Text, pack)
+import Data.Text.Extended as T (Text, tshow)
 import qualified Data.Text.IO as T (hPutStrLn)
 import qualified Effects.Log as Log (Priority, Verbosity, composeMessage)
 import Handlers.Logger.Internal
@@ -27,7 +27,7 @@ new verbosity = new_ verbosity `catch` rethrow
   where
     rethrow = throwM . convert
     convert :: IOError -> AppError
-    convert = loggerError . ("Logger Initiation Error: " <>) . T.pack . show
+    convert = loggerError . ("Logger Initiation Error: " <>) . T.tshow
 
 new_ :: Log.Verbosity -> IO Handle
 new_ v = do
@@ -38,7 +38,7 @@ new_ v = do
   where
     rethrow = throwM . convert
     convert :: IOError -> AppError
-    convert = loggerError . ("Logger failed to write message to StdOut: " <>) . T.pack . show
+    convert = loggerError . ("Logger failed to write message to StdOut: " <>) . T.tshow
 
 doLog_ :: IO.Handle -> Log.Priority -> Text -> IO ()
 doLog_ hStdout p t = Log.composeMessage p t >>= T.hPutStrLn hStdout
