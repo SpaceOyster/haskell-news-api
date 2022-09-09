@@ -13,6 +13,8 @@ newtype Handle = Handle
   { runDBQuery :: forall a. (FromBackendRow Postgres a) => Pg a -> IO a
   }
 
+type PostgresConfig = ConnectInfo
+
 newPostgresHandler :: Logger.Handle -> ConnectInfo -> IO Handle
 newPostgresHandler hLog cfg = do
   connection <- connect cfg

@@ -40,7 +40,7 @@ runWithApp cfg =
 initiateEnv :: Logger.Handle -> C.AppConfig -> IO AppEnv
 initiateEnv hLog cfg = do
   let envLogger = hLog
-  envDatabase <- newPostgresHandler envLogger $ C.toPostgresConnectInfo $ C.postgresConfig cfg
+  envDatabase <- newPostgresHandler envLogger $ C.postgresConfig cfg
   return $ Env {..}
 
 usagePrompt :: String

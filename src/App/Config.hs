@@ -8,6 +8,7 @@ import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Database.Beam.Postgres
 import Effects.Log as Log
+import Handlers.Database
 import Handlers.Logger as Logger
 
 data AppConfig = AppConfig
@@ -22,16 +23,7 @@ newtype ServerConfig = ServerConfig
   }
   deriving (Show)
 
-data PostgresConfig = PostgresConfig
-  { pgHost :: String,
-    pgPort :: Int,
-    pgUser :: String,
-    pgPassword :: String,
-    pgDatabaseName :: String
-  }
-  deriving (Show)
-
-readConfigFromFile :: (MonadIO m, MonadFail m) => FilePath -> m AppConfig
+readConfigFromFile :: (MonadIO m) => FilePath -> m AppConfig
 readConfigFromFile cfgPath =
   liftIO $ C.load [C.Required cfgPath] >>= toAppConfig
 
@@ -55,19 +47,9 @@ toServerConfig cfg = do
 
 toPostgresConfig :: C.Config -> IO PostgresConfig
 toPostgresConfig cfg = do
-  pgHost <- C.require cfg "host"
-  pgPort <- C.require cfg "port"
-  pgUser <- C.require cfg "dbUser"
-  pgPassword <- C.require cfg "dbPassword"
-  pgDatabaseName <- C.require cfg "dbName"
-  return $ PostgresConfig {..}
-
-toPostgresConnectInfo :: PostgresConfig -> ConnectInfo
-toPostgresConnectInfo pgConf =
-  ConnectInfo
-    { connectHost = pgHost pgConf,
-      connectPort = fromIntegral $ pgPort pgConf,
-      connectUser = pgUser pgConf,
-      connectPassword = pgPassword pgConf,
-      connectDatabase = pgDatabaseName pgConf
-    }
+  connectHost <- C.require cfg "host"
+  connectPort <- C.require cfg "port"
+  connectUser <- C.require cfg "dbUser"
+  connectPassword <- C.require cfg "dbPassword"
+  connectDatabase <- C.require cfg "dbName"
+  return $ ConnectInfo {..}
