@@ -3,9 +3,12 @@
 
 module App.Config where
 
+import App.Error
+import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
+import Data.Text.Extended as T
 import Database.Beam.Postgres
 import Effects.Log as Log
 import Handlers.Database
@@ -23,16 +26,37 @@ newtype ServerConfig = ServerConfig
   }
   deriving (Show)
 
-readConfigFromFile :: (MonadIO m) => FilePath -> m AppConfig
-readConfigFromFile cfgPath =
-  liftIO $ C.load [C.Required cfgPath] >>= toAppConfig
+readConfigFromFile :: (MonadIO m, MonadCatch m) => FilePath -> m AppConfig
+readConfigFromFile cfgPath = flip catch rethrow $ do
+  cfgContents <- liftIO (C.load [C.Required cfgPath])
+  liftIO $ toAppConfig cfgContents
+  where
+    rethrow e =
+      throwM . configError . mconcat $
+        [ "Failed to read config file: ",
+          T.tshow cfgPath,
+          ". With Error: ",
+          T.tshow (e :: C.ConfigError)
+        ]
 
 toAppConfig :: C.Config -> IO AppConfig
 toAppConfig cfg = do
-  loggerConfig <- toLoggerConfig $ C.subconfig "logger" cfg
-  serverConfig <- toServerConfig $ C.subconfig "API" cfg
-  postgresConfig <- toPostgresConfig $ C.subconfig "Database" cfg
+  loggerConfig <- readSubconfig cfg "logger" toLoggerConfig
+  serverConfig <- readSubconfig cfg "API" toServerConfig
+  postgresConfig <- readSubconfig cfg "Database" toPostgresConfig
   return $ AppConfig {..}
+
+readSubconfig :: C.Config -> C.Name -> (C.Config -> IO a) -> IO a
+readSubconfig cfg subconf parser = do
+  parser (C.subconfig subconf cfg) `catch` rethrow
+  where
+    rethrow e =
+      throwM . configError . mconcat $
+        [ "Failed to read subconfig: ",
+          T.tshow subconf,
+          ". With Error: ",
+          T.tshow (e :: C.KeyError)
+        ]
 
 toLoggerConfig :: C.Config -> IO LoggerConfig
 toLoggerConfig cfg = do

@@ -6,8 +6,9 @@ import API (app)
 import App.Config
 import qualified App.Config as C
 import App.Env (Env (Env, envDatabase, envLogger))
+import App.Error
 import App.Monad (AppEnv)
-import Control.Monad.Catch (SomeException, catchAll)
+import Control.Monad.Catch (SomeException, catch, catchAll)
 import Data.Function ((&))
 import Data.List (intercalate)
 import Handlers.Database
@@ -17,10 +18,12 @@ import qualified System.Environment as E
 import qualified System.Exit as Exit (die)
 
 main :: IO ()
-main = flip catchAll uncaughtExceptions $ do
-  cfg <- getConfig
-  runWithApp cfg
+main = do
+  cfg <- getConfig `catch` configException
+  runWithApp cfg `catchAll` uncaughtExceptions
   where
+    configException :: AppError -> IO AppConfig
+    configException e = Exit.die $ "Failed to read config file:" <> show e
     uncaughtExceptions :: SomeException -> IO ()
     uncaughtExceptions e =
       Exit.die $ "Uncaught Exception: " <> show e <> "\nClosing application."
