@@ -6,9 +6,13 @@ import Control.Monad.Catch (Exception)
 import Data.Text
 
 data AppError
-  = DBError Text
+  = ConfigError Text
+  | DBError Text
   | LoggerError Text
   deriving (Show, Exception)
+
+configError :: Text -> AppError
+configError = ConfigError
 
 dbError :: Text -> AppError
 dbError = DBError
