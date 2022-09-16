@@ -7,7 +7,7 @@ import App.Config
 import qualified App.Config as C
 import App.Env (Env (Env, envConfig, envDatabase, envLogger))
 import App.Error
-import App.Monad (AppEnv)
+import App.Monad (AppEnv, runApp)
 import Control.Monad.Catch (SomeException, catch, catchAll)
 import Control.Monad.IO.Class
 import DB
@@ -43,6 +43,7 @@ runWithApp cfg =
   Logger.withHandle (loggerConfig cfg) $ \hLog -> do
     env <- initiateEnv hLog cfg
     let port = cfg & C.serverConfig & C.port
+    runApp addRootUser env
     run port (app env)
 
 initiateEnv :: Logger.Handle -> C.AppConfig -> IO AppEnv
