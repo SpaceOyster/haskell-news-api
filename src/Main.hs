@@ -19,7 +19,7 @@ import qualified System.Exit as Exit (die)
 
 main :: IO ()
 main = do
-  cfg <- getConfig `catch` configException
+  cfg <- readConfig `catch` configException
   runWithApp cfg `catchAll` uncaughtExceptions
   where
     configException :: AppError -> IO AppConfig
@@ -28,8 +28,8 @@ main = do
     uncaughtExceptions e =
       Exit.die $ "Uncaught Exception: " <> show e <> "\nClosing application."
 
-getConfig :: IO C.AppConfig
-getConfig = do
+readConfig :: IO C.AppConfig
+readConfig = do
   cfgPath : _xs <- E.getArgs
   C.readConfigFromFile cfgPath
 
