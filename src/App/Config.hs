@@ -17,12 +17,19 @@ import Handlers.Logger as Logger
 data AppConfig = AppConfig
   { loggerConfig :: LoggerConfig,
     serverConfig :: ServerConfig,
+    apiConfig :: APIConfig,
     postgresConfig :: PostgresConfig
   }
   deriving (Show)
 
 newtype ServerConfig = ServerConfig
   { port :: Int
+  }
+  deriving (Show)
+
+data APIConfig = APIConfig
+  { rootUser :: Text,
+    rootPassword :: Text
   }
   deriving (Show)
 
@@ -42,8 +49,9 @@ readConfigFromFile cfgPath = flip catch rethrow $ do
 toAppConfig :: C.Config -> IO AppConfig
 toAppConfig cfg = do
   loggerConfig <- readSubconfig cfg "logger" toLoggerConfig
-  serverConfig <- readSubconfig cfg "API" toServerConfig
+  serverConfig <- readSubconfig cfg "server" toServerConfig
   postgresConfig <- readSubconfig cfg "Database" toPostgresConfig
+  apiConfig <- readSubconfig cfg "API" toAPIConfig
   return $ AppConfig {..}
 
 readSubconfig :: C.Config -> C.Name -> (C.Config -> IO a) -> IO a
@@ -68,6 +76,12 @@ toServerConfig :: C.Config -> IO ServerConfig
 toServerConfig cfg = do
   port <- C.require cfg "port"
   return $ ServerConfig {..}
+
+toAPIConfig :: C.Config -> IO APIConfig
+toAPIConfig cfg = do
+  rootUser <- C.require cfg "rootUser"
+  rootPassword <- C.require cfg "rootPassword"
+  return $ APIConfig {..}
 
 toPostgresConfig :: C.Config -> IO PostgresConfig
 toPostgresConfig cfg = do
