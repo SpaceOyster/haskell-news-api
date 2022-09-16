@@ -4,10 +4,11 @@
 
 module App.Monad where
 
-import App.Env (Env (envDatabase, envLogger))
+import App.Env (Env (envConfig, envDatabase, envLogger))
 import Control.Monad.Catch (MonadCatch, MonadThrow)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ReaderT (..), asks)
+import Effects.Config as Config
 import Effects.Database as DB
 import Effects.Log as Log
 import qualified Handlers.Database as DB
@@ -43,3 +44,6 @@ instance DB.MonadDatabase App where
     hDB <- asks envDatabase
     let runQ = DB.runDBQuery hDB
     App . liftIO $ runQ q
+
+instance Config.MonadConfig App where
+  getConfig = asks envConfig
