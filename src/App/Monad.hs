@@ -30,8 +30,11 @@ newtype App a = App
       MonadReader AppEnv
     )
 
+runApp :: App a -> AppEnv -> IO a
+runApp app = runReaderT (unApp app)
+
 appToHandler :: AppEnv -> App a -> Handler a
-appToHandler env = liftIO . flip runReaderT env . unApp
+appToHandler env = liftIO . flip runApp env
 
 instance Log.MonadLog App where
   doLog p t = do
