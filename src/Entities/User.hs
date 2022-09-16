@@ -66,3 +66,12 @@ generateHash pwd = liftIO $ do
   _passwordHashSalt <- CRand.getRandomBytes hashSaltLength
   let _passwordHash = Crypto.fastPBKDF2_SHA256 params pwd _passwordHashSalt
   return $ PasswordHash {..}
+
+data NewUserCredentials = NewUser
+  { _newUserName :: Text,
+    _newUserLogin :: Text,
+    _newUserPassword :: Text,
+    _newUserIsAdmin :: Bool,
+    _newUserIsAllowedToPost :: Bool
+  }
+  deriving (Show)
