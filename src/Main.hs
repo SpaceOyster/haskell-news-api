@@ -5,7 +5,7 @@ module Main where
 import API (app)
 import App.Config
 import qualified App.Config as C
-import App.Env (Env (Env, envDatabase, envLogger))
+import App.Env (Env (Env, envConfig, envDatabase, envLogger))
 import App.Error
 import App.Monad (AppEnv)
 import Control.Monad.Catch (SomeException, catch, catchAll)
@@ -43,6 +43,7 @@ runWithApp cfg =
 initiateEnv :: Logger.Handle -> C.AppConfig -> IO AppEnv
 initiateEnv hLog cfg = do
   let envLogger = hLog
+      envConfig = cfg
   envDatabase <- newPostgresHandler envLogger $ C.postgresConfig cfg
   return $ Env {..}
 
