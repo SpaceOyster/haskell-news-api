@@ -36,6 +36,7 @@ library
       App.Monad
       Data.Text.Extended
       DB
+      Effects.Config
       Effects.Database
       Effects.Log
       Entities.Category
