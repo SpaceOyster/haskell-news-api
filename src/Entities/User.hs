@@ -41,3 +41,10 @@ type UserId = PrimaryKey UserT Identity
 deriving instance Show (PrimaryKey UserT Identity)
 
 deriving instance Eq (PrimaryKey UserT Identity)
+
+data PasswordHash = PasswordHash
+  { _passwordHash :: BS.ByteString,
+    _passwordHashIterations :: Int32,
+    _passwordHashSalt :: BS.ByteString
+  }
+  deriving (Show)
