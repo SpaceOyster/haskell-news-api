@@ -60,8 +60,10 @@ library
     , bytestring
     , configurator
     , containers
+    , cryptonite
     , exceptions
     , mtl
+    , random
     , servant-server
     , text
     , time
@@ -84,9 +86,11 @@ executable haskell-news-api-exe
     , bytestring
     , configurator
     , containers
+    , cryptonite
     , exceptions
     , haskell-news-api
     , mtl
+    , random
     , servant-server
     , text
     , time
@@ -110,9 +114,11 @@ test-suite haskell-news-api-test
     , bytestring
     , configurator
     , containers
+    , cryptonite
     , exceptions
     , haskell-news-api
     , mtl
+    , random
     , servant-server
     , text
     , time

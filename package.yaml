@@ -34,6 +34,8 @@ dependencies:
 - mtl
 - exceptions
 - configurator
+- cryptonite
+- random
 
 library:
   source-dirs: src
