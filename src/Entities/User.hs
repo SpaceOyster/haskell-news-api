@@ -6,7 +6,7 @@
 
 module Entities.User where
 
-import Data.ByteString
+import qualified Data.ByteString as BS
 import Data.Int
 import Data.Text
 import Data.Time.Clock
@@ -16,8 +16,9 @@ data UserT f = User
   { _userId :: Columnar f Int32,
     _userName :: Columnar f Text,
     _userLogin :: Columnar f Text,
-    _userPasswordHash :: Columnar f Text,
-    _userPasswordSalt :: Columnar f Text,
+    _userPasswordHash :: Columnar f BS.ByteString,
+    _userPasswordHashIterations :: Columnar f Int32,
+    _userPasswordSalt :: Columnar f BS.ByteString,
     _userRegistrationDate :: Columnar f UTCTime,
     _userIsAdmin :: Columnar f Bool,
     _userIsAllowedToPost :: Columnar f Bool
