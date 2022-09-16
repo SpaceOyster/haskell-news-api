@@ -12,8 +12,11 @@ import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
 import Data.Int
 import Data.Text
+import Data.Text.Encoding as T
 import Data.Time.Clock
 import Database.Beam
+import Database.Beam.Postgres
+import Effects.Database
 import qualified System.Random as Rand
 
 data UserT f = User
@@ -75,3 +78,25 @@ data NewUserCredentials = NewUser
     _newUserIsAllowedToPost :: Bool
   }
   deriving (Show)
+
+insertNewUser ::
+  (MonadDatabase m, MonadIO m) =>
+  DatabaseEntity Postgres db (TableEntity UserT) ->
+  NewUserCredentials ->
+  m ()
+insertNewUser table NewUser {..} = do
+  PasswordHash {..} <- generateHash $ T.encodeUtf8 _newUserPassword
+  runQuery . runInsert . insert table $
+    insertExpressions
+      [ User
+          { _userId = default_,
+            _userName = val_ _newUserName,
+            _userLogin = val_ _newUserLogin,
+            _userPasswordHash = val_ _passwordHash,
+            _userPasswordHashIterations = val_ _passwordHashIterations,
+            _userPasswordSalt = val_ _passwordHashSalt,
+            _userRegistrationDate = default_,
+            _userIsAdmin = val_ _newUserIsAdmin,
+            _userIsAllowedToPost = val_ _newUserIsAllowedToPost
+          }
+      ]
