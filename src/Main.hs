@@ -9,8 +9,13 @@ import App.Env (Env (Env, envConfig, envDatabase, envLogger))
 import App.Error
 import App.Monad (AppEnv)
 import Control.Monad.Catch (SomeException, catch, catchAll)
+import Control.Monad.IO.Class
+import DB
 import Data.Function ((&))
 import Data.List (intercalate)
+import Effects.Config
+import Effects.Database
+import Entities.User
 import Handlers.Database
 import Handlers.Logger as Logger
 import Network.Wai.Handler.Warp (run)
@@ -57,3 +62,16 @@ usagePrompt =
       mempty,
       "FILE - is a config file."
     ]
+
+addRootUser :: (MonadDatabase m, MonadConfig m, MonadIO m) => m ()
+addRootUser = do
+  apiCfg <- apiConfig <$> getConfig
+  let rootUserCredentials =
+        NewUser
+          { _newUserName = rootUser apiCfg,
+            _newUserLogin = rootUser apiCfg,
+            _newUserPassword = rootPassword apiCfg,
+            _newUserIsAdmin = True,
+            _newUserIsAllowedToPost = True
+          }
+  insertNewUser (_newsUsers newsDB) rootUserCredentials
