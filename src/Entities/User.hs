@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Entities.User where
@@ -11,6 +13,7 @@ import qualified Crypto.KDF.PBKDF2 as Crypto
 import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
 import Data.Int
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time.Clock
@@ -100,3 +103,18 @@ insertNewUser table NewUser {..} = do
             _userIsAllowedToPost = val_ _newUserIsAllowedToPost
           }
       ]
+
+isUserLoginTaken ::
+  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity UserT) ->
+  T.Text ->
+  m Bool
+isUserLoginTaken table login = do
+  maybeUserCount <-
+    runQuery
+      . runSelectReturningOne
+      . select
+      . aggregate_ (\_ -> as_ @Int32 countAll_)
+      . filter_ (\u -> _userLogin u ==. val_ login)
+      $ all_ table
+  pure $ fromMaybe 0 maybeUserCount > 0
