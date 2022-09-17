@@ -11,8 +11,8 @@ import qualified Crypto.KDF.PBKDF2 as Crypto
 import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
 import Data.Int
-import Data.Text
-import Data.Text.Encoding as T
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import Data.Time.Clock
 import Database.Beam
 import Database.Beam.Postgres
@@ -21,8 +21,8 @@ import qualified System.Random as Rand
 
 data UserT f = User
   { _userId :: Columnar f Int32,
-    _userName :: Columnar f Text,
-    _userLogin :: Columnar f Text,
+    _userName :: Columnar f T.Text,
+    _userLogin :: Columnar f T.Text,
     _userPasswordHash :: Columnar f BS.ByteString,
     _userPasswordHashIterations :: Columnar f Int32,
     _userPasswordSalt :: Columnar f BS.ByteString,
@@ -71,9 +71,9 @@ generateHash pwd = liftIO $ do
   return $ PasswordHash {..}
 
 data NewUserCredentials = NewUser
-  { _newUserName :: Text,
-    _newUserLogin :: Text,
-    _newUserPassword :: Text,
+  { _newUserName :: T.Text,
+    _newUserLogin :: T.Text,
+    _newUserPassword :: T.Text,
     _newUserIsAdmin :: Bool,
     _newUserIsAllowedToPost :: Bool
   }
