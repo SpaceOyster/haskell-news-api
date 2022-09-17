@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Main where
@@ -15,6 +16,7 @@ import Data.Function ((&))
 import Data.List (intercalate)
 import Effects.Config
 import Effects.Database
+import Effects.Log as Log
 import Entities.User
 import Handlers.Database
 import Handlers.Logger as Logger
@@ -64,15 +66,19 @@ usagePrompt =
       "FILE - is a config file."
     ]
 
-addRootUser :: (MonadDatabase m, MonadConfig m, MonadIO m) => m ()
+addRootUser :: (MonadDatabase m, MonadConfig m, MonadIO m, Log.MonadLog m) => m ()
 addRootUser = do
   apiCfg <- apiConfig <$> getConfig
+  let rootLogin = rootUser apiCfg
   let rootUserCredentials =
         NewUser
-          { _newUserName = rootUser apiCfg,
-            _newUserLogin = rootUser apiCfg,
+          { _newUserName = rootLogin,
+            _newUserLogin = rootLogin,
             _newUserPassword = rootPassword apiCfg,
             _newUserIsAdmin = True,
             _newUserIsAllowedToPost = True
           }
-  insertNewUser (_newsUsers newsDB) rootUserCredentials
+  userExists <- isUserLoginTaken (_newsUsers newsDB) rootLogin
+  if userExists
+    then Log.logInfo $ "Root user: '" <> rootLogin <> "' already exist, skipping DB insertion"
+    else insertNewUser (_newsUsers newsDB) rootUserCredentials
