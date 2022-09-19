@@ -7,6 +7,7 @@ import API.Categories
 import API.Images
 import API.News
 import API.Users
+import App.Env
 import App.Monad
 import DB
 import Data.CaseInsensitive as CI (mk)
@@ -33,11 +34,18 @@ server =
 api :: Proxy AppAPI
 api = Proxy
 
-appServer :: AppEnv -> Server AppAPI
-appServer env = hoistServer api (appToHandler env) server
+appServer :: Context '[BasicAuthCheck User] -> AppEnv -> Server AppAPI
+appServer _ctx env =
+  hoistServerWithContext
+    api
+    (Proxy :: Proxy '[BasicAuthCheck User])
+    (appToHandler env)
+    server
 
 app :: AppEnv -> Application
-app = serve api . appServer
+app env = serveWithContext api ctx $ appServer ctx env
+  where
+    ctx = checkBasicAuth (envDatabase env) :. EmptyContext
 
 checkBasicAuth :: DB.Handle -> BasicAuthCheck User
 checkBasicAuth dbHandle = BasicAuthCheck $ \basicAuthData -> do
