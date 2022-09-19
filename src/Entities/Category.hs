@@ -6,11 +6,12 @@
 
 module Entities.Category where
 
+import Data.CaseInsensitive as CI
 import Data.Text
 import Database.Beam
 
 data CategoryT f = Category
-  { _categoryName :: Columnar f Text,
+  { _categoryName :: Columnar f (CI Text),
     _categoryParentCategory :: PrimaryKey CategoryT (Nullable f)
   }
   deriving (Generic, Beamable)
@@ -22,7 +23,7 @@ deriving instance Show Category
 deriving instance Eq Category
 
 instance Table CategoryT where
-  data PrimaryKey CategoryT f = CategoryId (Columnar f Text)
+  data PrimaryKey CategoryT f = CategoryId (Columnar f (CI Text))
     deriving (Generic, Beamable)
   primaryKey = CategoryId . _categoryName
 
