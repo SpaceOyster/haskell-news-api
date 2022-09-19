@@ -8,7 +8,6 @@ import App.Monad
 import Data.Text
 import Entities.User
 import Servant
-import Servant.API.BasicAuth
 
 type UsersAPI =
   Get '[JSON] Text
