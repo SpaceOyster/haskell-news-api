@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - warp
 - wai
+- servant
 - servant-server
 - bytestring
 - text
@@ -30,6 +31,7 @@ dependencies:
 - containers
 - beam-core
 - beam-postgres
+- case-insensitive
 - aeson
 - mtl
 - exceptions

@@ -59,12 +59,14 @@ library
     , beam-core
     , beam-postgres
     , bytestring
+    , case-insensitive
     , configurator
     , containers
     , cryptonite
     , exceptions
     , mtl
     , random
+    , servant
     , servant-server
     , text
     , time
@@ -85,6 +87,7 @@ executable haskell-news-api-exe
     , beam-core
     , beam-postgres
     , bytestring
+    , case-insensitive
     , configurator
     , containers
     , cryptonite
@@ -92,6 +95,7 @@ executable haskell-news-api-exe
     , haskell-news-api
     , mtl
     , random
+    , servant
     , servant-server
     , text
     , time
@@ -113,6 +117,7 @@ test-suite haskell-news-api-test
     , beam-core
     , beam-postgres
     , bytestring
+    , case-insensitive
     , configurator
     , containers
     , cryptonite
@@ -120,6 +125,7 @@ test-suite haskell-news-api-test
     , haskell-news-api
     , mtl
     , random
+    , servant
     , servant-server
     , text
     , time
