@@ -12,6 +12,7 @@ module Entities.User where
 import qualified Crypto.KDF.PBKDF2 as Crypto
 import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
+import Data.CaseInsensitive as CI
 import Data.Int
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
@@ -25,7 +26,7 @@ import qualified System.Random as Rand
 data UserT f = User
   { _userId :: Columnar f Int32,
     _userName :: Columnar f T.Text,
-    _userLogin :: Columnar f T.Text,
+    _userLogin :: Columnar f (CI T.Text),
     _userPasswordHash :: Columnar f BS.ByteString,
     _userPasswordHashIterations :: Columnar f Int32,
     _userPasswordSalt :: Columnar f BS.ByteString,
@@ -94,7 +95,7 @@ insertNewUser table NewUser {..} = do
       [ User
           { _userId = default_,
             _userName = val_ _newUserName,
-            _userLogin = val_ _newUserLogin,
+            _userLogin = val_ (CI.mk _newUserLogin),
             _userPasswordHash = val_ _passwordHash,
             _userPasswordHashIterations = val_ _passwordHashIterations,
             _userPasswordSalt = val_ _passwordHashSalt,
@@ -115,6 +116,6 @@ isUserLoginTaken table login = do
       . runSelectReturningOne
       . select
       . aggregate_ (\_ -> as_ @Int32 countAll_)
-      . filter_ (\u -> _userLogin u ==. val_ login)
+      . filter_ (\u -> _userLogin u ==. val_ (CI.mk login))
       $ all_ table
   pure $ fromMaybe 0 maybeUserCount > 0
