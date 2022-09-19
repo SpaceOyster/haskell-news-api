@@ -53,6 +53,20 @@ deriving instance Show (PrimaryKey UserT Identity)
 
 deriving instance Eq (PrimaryKey UserT Identity)
 
+checkPassword :: BS.ByteString -> User -> Bool
+checkPassword pwd usr =
+  Crypto.fastPBKDF2_SHA256 cryptoParams pwd salt == pwdHash
+  where
+    pwdHash = _userPasswordHash usr
+    hashIterations = _userPasswordHashIterations usr
+    hashLength = BS.length pwdHash
+    cryptoParams =
+      Crypto.Parameters
+        { iterCounts = fromIntegral hashIterations,
+          outputLength = hashLength
+        }
+    salt = _userPasswordSalt usr
+
 data PasswordHash = PasswordHash
   { _passwordHash :: BS.ByteString,
     _passwordHashIterations :: Int32,
