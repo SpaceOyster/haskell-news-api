@@ -29,6 +29,7 @@ library
       API.Categories
       API.Images
       API.News
+      API.Protected
       API.Users
       App.Config
       App.Env

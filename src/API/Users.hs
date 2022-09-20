@@ -1,17 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API.Users where
 
+import API.Protected ()
 import App.Monad
 import Data.Text
 import Entities.User
 import Servant
-import Servant.Server.Experimental.Auth
-
-type instance AuthServerData (AuthProtect "basic-auth") = User
 
 type UsersAPI =
   Get '[JSON] Text
