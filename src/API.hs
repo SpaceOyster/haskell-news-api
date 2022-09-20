@@ -17,6 +17,8 @@ import Entities.User
 import qualified Handlers.Database as DB
 import Network.Wai
 import Servant
+import Servant.Server.Experimental.Auth
+import Servant.Server.Internal.BasicAuth
 
 type AppAPI =
   "categories" :> CategoriesAPI
@@ -34,29 +36,37 @@ server =
 api :: Proxy AppAPI
 api = Proxy
 
-appServer :: Context '[BasicAuthCheck User] -> AppEnv -> Server AppAPI
+basicAuthProxy :: Proxy '[AuthHandler Request User]
+basicAuthProxy = Proxy
+
+appServer :: Context '[AuthHandler Request User] -> AppEnv -> Server AppAPI
 appServer _ctx env =
-  hoistServerWithContext
-    api
-    (Proxy :: Proxy '[BasicAuthCheck User])
-    (appToHandler env)
-    server
+  hoistServerWithContext api basicAuthProxy (appToHandler env) server
 
 app :: AppEnv -> Application
 app env = serveWithContext api ctx $ appServer ctx env
   where
-    ctx = checkBasicAuth (envDatabase env) :. EmptyContext
+    ctx :: Context '[AuthHandler Request User]
+    ctx = authHandler env :. EmptyContext
 
-checkBasicAuth :: DB.Handle -> BasicAuthCheck User
-checkBasicAuth dbHandle = BasicAuthCheck $ \basicAuthData -> do
+lookupAccount :: AppEnv -> BasicAuthData -> Handler User
+lookupAccount env basicAuthData = do
   let username = CI.mk $ decodeUtf8 (basicAuthUsername basicAuthData)
   let password = basicAuthPassword basicAuthData
   maybeUser <-
-    DB.runDBQuery dbHandle
+    liftIO
+      . DB.runDBQuery (envDatabase env)
       . runSelectReturningOne
       . select
       . filter_ (\u -> _userLogin u ==. val_ username)
       $ all_ (_newsUsers newsDB)
   case maybeUser of
-    Nothing -> pure NoSuchUser
-    Just user -> if checkPassword password user then pure (Authorized user) else pure BadPassword
+    Nothing -> throwError err404
+    Just user -> if checkPassword password user then pure user else throwError err404
+
+authHandler :: AppEnv -> AuthHandler Request User
+authHandler env = mkAuthHandler handler
+  where
+    handler req = do
+      let maybeBasicAuthData = decodeBAHdr req
+      maybe (throwError err404) (lookupAccount env) maybeBasicAuthData
