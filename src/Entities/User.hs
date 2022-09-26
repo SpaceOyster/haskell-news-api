@@ -133,3 +133,15 @@ isUserLoginTaken table login = do
       . filter_ (\u -> _userLogin u ==. val_ (CI.mk login))
       $ all_ table
   pure $ fromMaybe 0 maybeUserCount > 0
+
+lookupUserLogin ::
+  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity UserT) ->
+  T.Text ->
+  m (Maybe User)
+lookupUserLogin table login =
+  runQuery
+    . runSelectReturningOne
+    . select
+    . filter_ (\u -> _userLogin u ==. val_ (CI.mk login))
+    $ all_ table
