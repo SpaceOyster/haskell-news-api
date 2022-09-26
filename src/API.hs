@@ -31,12 +31,12 @@ server =
 api :: Proxy AppAPI
 api = Proxy
 
-basicAuthProxy :: Proxy '[AuthHandler Request User]
-basicAuthProxy = Proxy
+contextType :: Proxy '[AuthHandler Request User]
+contextType = Proxy
 
 appServer :: Context '[AuthHandler Request User] -> AppEnv -> Server AppAPI
 appServer _ctx env =
-  hoistServerWithContext api basicAuthProxy (appToHandler env) server
+  hoistServerWithContext api contextType (appToHandler env) server
 
 app :: AppEnv -> Application
 app env = serveWithContext api ctx $ appServer ctx env
