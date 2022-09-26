@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module API.News where
+module API.Routes.News where
 
 import App.Monad
 import Data.Text

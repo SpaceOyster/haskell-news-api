@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module API.Categories where
+module API.Routes.Categories where
 
 import App.Monad
 import Data.Text

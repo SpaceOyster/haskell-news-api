@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module API.Images where
+module API.Routes.Images where
 
 import App.Monad
 import Data.Text

@@ -26,11 +26,11 @@ source-repository head
 library
   exposed-modules:
       API
-      API.Categories
-      API.Images
-      API.News
-      API.Protected
-      API.Users
+      API.Modifiers.Protected
+      API.Routes.Categories
+      API.Routes.Images
+      API.Routes.News
+      API.Routes.Users
       App.Config
       App.Env
       App.Error

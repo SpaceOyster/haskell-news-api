@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module API.Protected where
+module API.Modifiers.Protected where
 
 import App.Env
 import App.Monad

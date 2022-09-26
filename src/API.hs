@@ -4,11 +4,11 @@
 
 module API where
 
-import API.Categories
-import API.Images
-import API.News
-import API.Protected
-import API.Users
+import API.Modifiers.Protected
+import API.Routes.Categories
+import API.Routes.Images
+import API.Routes.News
+import API.Routes.Users
 import App.Monad
 import Entities.User
 import Network.Wai

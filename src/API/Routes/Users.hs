@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module API.Users where
+module API.Routes.Users where
 
-import API.Protected ()
+import API.Modifiers.Protected ()
 import App.Monad
 import Data.Text
 import Entities.User
