@@ -45,7 +45,7 @@ runWithApp cfg =
   Logger.withHandle (loggerConfig cfg) $ \hLog -> do
     env <- initiateEnv hLog cfg
     let port = cfg & C.serverConfig & C.port
-    runApp addRootUser env
+    _ <- runApp addRootUser env
     run port (app env)
 
 initiateEnv :: Logger.Handle -> C.AppConfig -> IO AppEnv
