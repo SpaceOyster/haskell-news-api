@@ -6,7 +6,7 @@ module App.Monad where
 
 import App.Env (Env (envConfig, envDatabase, envLogger))
 import Control.Monad.Catch (MonadCatch, MonadThrow)
-import Control.Monad.Except
+import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ReaderT (..), asks)
 import Effects.Config as Config
