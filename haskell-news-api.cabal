@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       API
+      API.Modifiers.Paginated
       API.Modifiers.Protected
       API.Routes.Categories
       API.Routes.Images
