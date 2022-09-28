@@ -3,7 +3,6 @@
 
 module API.Modifiers.Protected where
 
-import App.Env
 import App.Monad
 import DB
 import Data.CaseInsensitive as CI (mk)
@@ -11,7 +10,6 @@ import Data.Text.Encoding (decodeUtf8)
 import Database.Beam
 import qualified Effects.Database as DB
 import Entities.User
-import qualified Handlers.Database as DB
 import Network.Wai
 import Servant
 import Servant.Server.Experimental.Auth
