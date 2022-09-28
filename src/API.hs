@@ -34,12 +34,12 @@ api = Proxy
 contextType :: Proxy '[AuthHandler Request User]
 contextType = Proxy
 
-appServer :: Context '[AuthHandler Request User] -> AppEnv -> Server AppAPI
-appServer _ctx env =
+appServer :: AppEnv -> Server AppAPI
+appServer env =
   hoistServerWithContext api contextType (appToHandler env) server
 
 app :: AppEnv -> Application
-app env = serveWithContext api ctx $ appServer ctx env
+app env = serveWithContext api ctx $ appServer env
   where
     ctx :: Context '[AuthHandler Request User]
     ctx = authHandler env :. EmptyContext
