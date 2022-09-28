@@ -8,6 +8,7 @@ import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
+import Data.Int
 import Data.Text.Extended as T
 import Database.Beam.Postgres
 import Effects.Log as Log
@@ -29,9 +30,13 @@ newtype ServerConfig = ServerConfig
 
 data APIConfig = APIConfig
   { rootUser :: Text,
-    rootPassword :: Text
+    rootPassword :: Text,
+    pagination :: Pagination
   }
   deriving (Show)
+
+data Pagination = Pagination {offset :: Int32, limit :: Int32}
+  deriving (Eq, Show)
 
 readConfigFromFile :: (MonadIO m, MonadCatch m) => FilePath -> m AppConfig
 readConfigFromFile cfgPath = flip catch rethrow $ do
@@ -81,6 +86,9 @@ toAPIConfig :: C.Config -> IO APIConfig
 toAPIConfig cfg = do
   rootUser <- C.require cfg "rootUser"
   rootPassword <- C.require cfg "rootPassword"
+  offset <- C.lookupDefault 0 cfg "pagination.offset"
+  limit <- C.lookupDefault 25 cfg "pagination.limit"
+  let pagination = Pagination {..}
   return $ APIConfig {..}
 
 toPostgresConfig :: C.Config -> IO PostgresConfig
