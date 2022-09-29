@@ -45,6 +45,16 @@ instance A.ToJSON UserListItem where
         { fieldLabelModifier = A.camelTo2 '-' . Prelude.drop 7
         }
 
+userToListItem :: User -> UserListItem
+userToListItem usr =
+  UserListItem
+    { _userLIName = _userName usr,
+      _userLILogin = CI.original $ _userLogin usr,
+      _userLIRegistrationDate = _userRegistrationDate usr,
+      _userLIIsAdmin = _userIsAdmin usr,
+      _userLIIsAllowedToPost = _userIsAllowedToPost usr
+    }
+
 addNewUser ::
   ( DB.MonadDatabase m,
     Log.MonadLog m,
