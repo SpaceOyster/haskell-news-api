@@ -12,7 +12,7 @@ import Control.Monad.Except
 import Control.Monad.IO.Class
 import DB
 import Data.Aeson as A
-import Data.CaseInsensitive (original)
+import Data.CaseInsensitive as CI
 import Data.Text
 import Effects.Database as DB
 import Effects.Log as Log
@@ -46,14 +46,14 @@ addNewUser usr (NewUserJSON newUser) =
     do_logSuccess =
       Log.logInfo . mconcat $
         [ "User ",
-          original (_userLogin usr),
+          CI.original (_userLogin usr),
           " created new user :",
           _newUserName newUser
         ]
     do_logUnauthorised =
       Log.logWarning . mconcat $
         [ "User ",
-          original (_userLogin usr),
+          CI.original (_userLogin usr),
           " is not authorised to create a new user"
         ]
 
