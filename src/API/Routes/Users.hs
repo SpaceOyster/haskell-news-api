@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
@@ -14,6 +16,7 @@ import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
 import Data.Text
+import Data.Time.Clock
 import Effects.Database as DB
 import Effects.Log as Log
 import Entities.User
@@ -25,6 +28,22 @@ type UsersAPI =
 
 users :: ServerT UsersAPI App
 users = return "GET categories endpoint" :<|> addNewUser
+
+data UserListItem = UserListItem
+  { _userLIName :: Text,
+    _userLILogin :: Text,
+    _userLIRegistrationDate :: UTCTime,
+    _userLIIsAdmin :: Bool,
+    _userLIIsAllowedToPost :: Bool
+  }
+  deriving (Show, Generic)
+
+instance A.ToJSON UserListItem where
+  toJSON =
+    A.genericToJSON
+      defaultOptions
+        { fieldLabelModifier = A.camelTo2 '-' . Prelude.drop 7
+        }
 
 addNewUser ::
   ( DB.MonadDatabase m,
