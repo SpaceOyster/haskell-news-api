@@ -35,7 +35,7 @@ data APIConfig = APIConfig
   }
   deriving (Show)
 
-data Pagination = Pagination {offset :: Int32, limit :: Int32}
+data Pagination = Pagination {offset :: Integer, limit :: Integer}
   deriving (Eq, Show)
 
 readConfigFromFile :: (MonadIO m, MonadCatch m) => FilePath -> m AppConfig

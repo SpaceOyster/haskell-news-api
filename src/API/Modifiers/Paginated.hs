@@ -1,22 +1,23 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API.Modifiers.Paginated where
 
 import App.Config as Config
-import Data.Int
 import Data.Maybe
 import Effects.Config
 import Servant
 
-type Paginated = Offset :> Limit
+type Offset = QueryParam "offset" Integer
 
-type Offset = QueryParam "offset" Int32
+type Limit = QueryParam "limit" Integer
 
-type Limit = QueryParam "limit" Int32
+type family Paginated sub where
+  Paginated sub = Offset :> Limit :> sub
 
-getPagination :: MonadConfig m => Maybe Int32 -> Maybe Int32 -> m Pagination
+getPagination :: MonadConfig m => Maybe Integer -> Maybe Integer -> m Pagination
 getPagination mOffset mLimit = do
   pagination <- pagination . apiConfig <$> getConfig
   let offset = fromMaybe (Config.offset pagination) mOffset
