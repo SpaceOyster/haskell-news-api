@@ -7,11 +7,10 @@
 module Effects.Database where
 
 import Control.Monad.Trans (MonadTrans, lift)
-import Database.Beam
 import Database.Beam.Postgres
 
 class Monad m => MonadDatabase m where
-  runQuery :: forall a. (FromBackendRow Postgres a) => Pg a -> m a
+  runQuery :: forall a. Pg a -> m a
 
 instance
   {-# OVERLAPPABLE #-}
