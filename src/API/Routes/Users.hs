@@ -8,26 +8,30 @@
 
 module API.Routes.Users where
 
+import API.Modifiers.Paginated
 import API.Modifiers.Protected ()
+import App.Config
 import App.Monad
-import Control.Monad.Except
-import Control.Monad.IO.Class
+import Control.Monad.Except (MonadError)
+import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
 import Data.Text
 import Data.Time.Clock
+import Database.Beam
+import Effects.Config
 import Effects.Database as DB
 import Effects.Log as Log
 import Entities.User
 import Servant
 
 type UsersAPI =
-  Get '[JSON] Text
+  Paginated (Get '[JSON] [UserListItem])
     :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] Text
 
 users :: ServerT UsersAPI App
-users = return "GET categories endpoint" :<|> addNewUser
+users = listUsers :<|> addNewUser
 
 data UserListItem = UserListItem
   { _userLIName :: Text,
@@ -44,6 +48,28 @@ instance A.ToJSON UserListItem where
       defaultOptions
         { fieldLabelModifier = A.camelTo2 '-' . Prelude.drop 7
         }
+
+listUsers ::
+  ( DB.MonadDatabase m,
+    Log.MonadLog m,
+    MonadConfig m,
+    MonadIO m,
+    MonadError ServerError m
+  ) =>
+  Maybe Integer ->
+  Maybe Integer ->
+  m [UserListItem]
+listUsers mOffset mLimit = do
+  Pagination {offset, limit} <- getPagination mOffset mLimit
+  usrs <-
+    DB.runQuery
+      . runSelectReturningList
+      . select
+      . limit_ limit
+      . offset_ offset
+      . all_
+      $ _newsUsers newsDB
+  pure $ userToListItem <$> usrs
 
 userToListItem :: User -> UserListItem
 userToListItem usr =
