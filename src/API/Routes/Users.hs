@@ -56,11 +56,9 @@ listUsers ::
     MonadIO m,
     MonadError ServerError m
   ) =>
-  Maybe Integer ->
-  Maybe Integer ->
+  Pagination ->
   m [UserListItem]
-listUsers mOffset mLimit = do
-  Pagination {offset, limit} <- getPagination mOffset mLimit
+listUsers Pagination {..} = do
   usrs <-
     DB.runQuery
       . runSelectReturningList

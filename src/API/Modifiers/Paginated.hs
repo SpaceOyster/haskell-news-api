@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -33,13 +34,23 @@ instance
   ) =>
   HasServer (Paginated :> api) context
   where
-  type ServerT (Paginated :> api) m = Maybe Integer -> Maybe Integer -> ServerT api m
+  type ServerT (Paginated :> api) m = Pagination -> ServerT api m
 
-  hoistServerWithContext _ = hoistServerWithContext api
-    where
-      api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> api)
+  hoistServerWithContext ::
+    Proxy (Paginated :> api) ->
+    Proxy context ->
+    (forall x. m x -> n x) ->
+    ServerT (Paginated :> api) m ->
+    ServerT (Paginated :> api) n
+  hoistServerWithContext _ pc nt s =
+    hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
-  route Proxy = route api
+  route ::
+    Proxy (Paginated :> api) ->
+    Context context ->
+    Delayed env (Server (Paginated :> api)) ->
+    Router env
+  route Proxy context delayed = route api context (withPagination <$> delayed)
     where
       api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> api)
 
@@ -49,3 +60,10 @@ getPagination mOffset mLimit = do
   let offset = fromMaybe (Config.offset pagination) mOffset
       limit = fromMaybe (Config.limit pagination) mLimit
   pure $ Pagination {offset, limit}
+
+withPagination :: (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
+withPagination f mOffset mLimit =
+  let offset = fromMaybe 0 mOffset
+      limit = fromMaybe 25 mLimit
+      p = Pagination {offset, limit}
+   in f p
