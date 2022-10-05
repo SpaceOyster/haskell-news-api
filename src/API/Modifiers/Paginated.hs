@@ -30,6 +30,7 @@ data Paginated deriving (Typeable)
 
 instance
   ( HasServer api context,
+    HasContextEntry context Pagination,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
   ) =>
   HasServer (Paginated :> api) context
@@ -50,8 +51,10 @@ instance
     Context context ->
     Delayed env (Server (Paginated :> api)) ->
     Router env
-  route Proxy context delayed = route api context (withPagination <$> delayed)
+  route Proxy context delayed =
+    route api context (withDefaultPagination defaultPagination <$> delayed)
     where
+      defaultPagination = getContextEntry context :: Pagination
       api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> api)
 
 getPagination :: MonadConfig m => Maybe Integer -> Maybe Integer -> m Pagination
@@ -60,10 +63,9 @@ getPagination mOffset mLimit = do
   let offset = fromMaybe (Config.offset pagination) mOffset
       limit = fromMaybe (Config.limit pagination) mLimit
   pure $ Pagination {offset, limit}
-
-withPagination :: (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
-withPagination f mOffset mLimit =
-  let offset = fromMaybe 0 mOffset
-      limit = fromMaybe 25 mLimit
+withDefaultPagination :: Pagination -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
+withDefaultPagination defaultPagination f mOffset mLimit =
+  let offset = fromMaybe (Config.offset defaultPagination) mOffset
+      limit = fromMaybe (Config.limit defaultPagination) mLimit
       p = Pagination {offset, limit}
    in f p

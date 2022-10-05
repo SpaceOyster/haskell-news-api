@@ -9,6 +9,8 @@ import API.Routes.Categories
 import API.Routes.Images
 import API.Routes.News
 import API.Routes.Users
+import App.Config
+import App.Env
 import App.Monad
 import Entities.User
 import Network.Wai
@@ -31,7 +33,7 @@ server =
 api :: Proxy AppAPI
 api = Proxy
 
-contextType :: Proxy '[AuthHandler Request User]
+contextType :: Proxy '[AuthHandler Request User, Pagination]
 contextType = Proxy
 
 appServer :: AppEnv -> Server AppAPI
@@ -41,5 +43,7 @@ appServer env =
 app :: AppEnv -> Application
 app env = serveWithContext api ctx $ appServer env
   where
-    ctx :: Context '[AuthHandler Request User]
-    ctx = authHandler env :. EmptyContext
+    defaultPagination :: Pagination
+    defaultPagination = pagination $ apiConfig (envConfig env)
+    ctx :: Context '[AuthHandler Request User, Pagination]
+    ctx = authHandler env :. defaultPagination :. EmptyContext
