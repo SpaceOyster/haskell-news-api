@@ -27,7 +27,7 @@ import Entities.User
 import Servant
 
 type UsersAPI =
-  Paginated (Get '[JSON] [UserListItem])
+  Paginated :> Get '[JSON] [UserListItem]
     :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] Text
 
 users :: ServerT UsersAPI App
