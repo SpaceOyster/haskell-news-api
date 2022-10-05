@@ -57,12 +57,6 @@ instance
       defaultPagination = getContextEntry context :: Pagination
       api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> api)
 
-getPagination :: MonadConfig m => Maybe Integer -> Maybe Integer -> m Pagination
-getPagination mOffset mLimit = do
-  pagination <- pagination . apiConfig <$> getConfig
-  let offset = fromMaybe (Config.offset pagination) mOffset
-      limit = fromMaybe (Config.limit pagination) mLimit
-  pure $ Pagination {offset, limit}
 withDefaultPagination :: Pagination -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
 withDefaultPagination defaultPagination f mOffset mLimit =
   let offset = fromMaybe (Config.offset defaultPagination) mOffset
