@@ -33,7 +33,9 @@ server =
 api :: Proxy AppAPI
 api = Proxy
 
-contextType :: Proxy '[AuthHandler Request User, Pagination]
+type DefaultPagination = Pagination
+
+contextType :: Proxy '[AuthHandler Request User, DefaultPagination]
 contextType = Proxy
 
 appServer :: AppEnv -> Server AppAPI
@@ -43,7 +45,6 @@ appServer env =
 app :: AppEnv -> Application
 app env = serveWithContext api ctx $ appServer env
   where
-    defaultPagination :: Pagination
     defaultPagination = pagination $ apiConfig (envConfig env)
-    ctx :: Context '[AuthHandler Request User, Pagination]
+    ctx :: Context '[AuthHandler Request User, DefaultPagination]
     ctx = authHandler env :. defaultPagination :. EmptyContext
