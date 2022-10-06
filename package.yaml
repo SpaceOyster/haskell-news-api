@@ -38,6 +38,7 @@ dependencies:
 - configurator
 - cryptonite
 - random
+- parsec
 
 library:
   source-dirs: src

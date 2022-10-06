@@ -67,6 +67,7 @@ library
     , cryptonite
     , exceptions
     , mtl
+    , parsec
     , random
     , servant
     , servant-server
@@ -96,6 +97,7 @@ executable haskell-news-api-exe
     , exceptions
     , haskell-news-api
     , mtl
+    , parsec
     , random
     , servant
     , servant-server
@@ -126,6 +128,7 @@ test-suite haskell-news-api-test
     , exceptions
     , haskell-news-api
     , mtl
+    , parsec
     , random
     , servant
     , servant-server
