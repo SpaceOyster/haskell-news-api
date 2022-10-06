@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -12,10 +11,8 @@
 
 module API.Modifiers.Paginated where
 
-import App.Config as Config
 import Data.Maybe
 import Data.Typeable
-import Effects.Config
 import Servant
 import Servant.Server.Internal.Context
 import Servant.Server.Internal.Delayed
@@ -25,6 +22,12 @@ import Servant.Server.Internal.Router
 type Offset = QueryParam "offset" Integer
 
 type Limit = QueryParam "limit" Integer
+
+data Pagination = Pagination
+  { offset :: Integer,
+    limit :: Integer,
+  }
+  deriving (Eq, Show)
 
 data Paginated deriving (Typeable)
 

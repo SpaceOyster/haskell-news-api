@@ -4,6 +4,7 @@
 
 module API where
 
+import API.Modifiers.Paginated
 import API.Modifiers.Protected
 import API.Routes.Categories
 import API.Routes.Images

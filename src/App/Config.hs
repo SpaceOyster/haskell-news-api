@@ -3,12 +3,12 @@
 
 module App.Config where
 
+import API.Modifiers.Paginated
 import App.Error
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
-import Data.Int
 import Data.Text.Extended as T
 import Database.Beam.Postgres
 import Effects.Log as Log
@@ -34,9 +34,6 @@ data APIConfig = APIConfig
     pagination :: Pagination
   }
   deriving (Show)
-
-data Pagination = Pagination {offset :: Integer, limit :: Integer}
-  deriving (Eq, Show)
 
 readConfigFromFile :: (MonadIO m, MonadCatch m) => FilePath -> m AppConfig
 readConfigFromFile cfgPath = flip catch rethrow $ do
