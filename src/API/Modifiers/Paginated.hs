@@ -17,8 +17,11 @@ import Data.Foldable (asum)
 import Data.Maybe
 import Data.Text.Extended as T
 import Data.Typeable
+import Database.Beam (asc_, desc_)
+import Database.Beam.Backend.SQL (BeamSqlBackend)
+import Database.Beam.Query (QExpr)
+import Database.Beam.Query.Internal (QOrd)
 import Servant
-import Servant.Server.Internal.Context
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router
@@ -51,6 +54,11 @@ instance Conf.Configured Order where
 
 instance FromHttpApiData Order where
   parseUrlPiece = parseOrder
+
+paginationOrder_ :: forall be s a. BeamSqlBackend be => Pagination -> QExpr be s a -> QOrd be s a
+paginationOrder_ p = case order p of
+  Asc -> asc_
+  Desc -> desc_
 
 data Pagination = Pagination
   { offset :: Integer,
