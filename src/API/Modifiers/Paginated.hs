@@ -49,6 +49,9 @@ instance Conf.Configured Order where
   convert (Conf.String t) = either (const Nothing) pure $ parseOrder t
   convert _ = Nothing
 
+instance FromHttpApiData Order where
+  parseUrlPiece = parseOrder
+
 data Pagination = Pagination
   { offset :: Integer,
     limit :: Integer,
