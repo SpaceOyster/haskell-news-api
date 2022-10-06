@@ -55,6 +55,7 @@ instance FromHttpApiData Order where
 data Pagination = Pagination
   { offset :: Integer,
     limit :: Integer,
+    order :: Order
   }
   deriving (Eq, Show)
 
