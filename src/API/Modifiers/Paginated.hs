@@ -12,6 +12,7 @@
 module API.Modifiers.Paginated where
 
 import Data.Bifunctor (first)
+import qualified Data.Configurator.Types as Conf
 import Data.Foldable (asum)
 import Data.Maybe
 import Data.Text.Extended as T
@@ -43,6 +44,10 @@ parseOrder =
     . Parsec.parse orderParser "Pagination Order"
     . T.unpack
     . T.toLower
+
+instance Conf.Configured Order where
+  convert (Conf.String t) = either (const Nothing) pure $ parseOrder t
+  convert _ = Nothing
 
 data Pagination = Pagination
   { offset :: Integer,
