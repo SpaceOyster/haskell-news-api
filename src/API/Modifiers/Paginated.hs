@@ -11,8 +11,10 @@
 
 module API.Modifiers.Paginated where
 
+import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Data.Maybe
+import Data.Text.Extended as T
 import Data.Typeable
 import Servant
 import Servant.Server.Internal.Context
@@ -34,6 +36,13 @@ orderParser =
     [ Parsec.string "asc" >> pure Asc,
       Parsec.string "desc" >> pure Desc
     ]
+
+parseOrder :: Text -> Either Text Order
+parseOrder =
+  first T.tshow
+    . Parsec.parse orderParser "Pagination Order"
+    . T.unpack
+    . T.toLower
 
 data Pagination = Pagination
   { offset :: Integer,
