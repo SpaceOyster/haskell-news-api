@@ -23,6 +23,9 @@ type Offset = QueryParam "offset" Integer
 
 type Limit = QueryParam "limit" Integer
 
+data Order = Asc | Desc
+  deriving (Eq, Show)
+
 data Pagination = Pagination
   { offset :: Integer,
     limit :: Integer,
