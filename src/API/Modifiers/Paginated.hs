@@ -88,12 +88,13 @@ instance
     route api context (withDefaultPagination defaultPagination <$> delayed)
     where
       defaultPagination = getContextEntry context :: Pagination
-      api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> api)
+      api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> QueryParam "order" Order :> api)
 
-withDefaultPagination :: Pagination -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
-withDefaultPagination defaultPagination f mOffset mLimit =
+withDefaultPagination :: Pagination -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> Maybe Order -> a)
+withDefaultPagination defaultPagination f mOffset mLimit mOrder =
   f $
     Pagination
       { offset = fromMaybe (offset defaultPagination) mOffset,
         limit = fromMaybe (limit defaultPagination) mLimit,
+        order = fromMaybe (order defaultPagination) mOrder
       }
