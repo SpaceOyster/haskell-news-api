@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
@@ -10,7 +9,6 @@ module API.Routes.Users where
 
 import API.Modifiers.Paginated
 import API.Modifiers.Protected ()
-import App.Config
 import App.Monad
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
@@ -58,13 +56,14 @@ listUsers ::
   ) =>
   Pagination ->
   m [UserListItem]
-listUsers Pagination {..} = do
+listUsers p@Pagination {..} = do
   usrs <-
     DB.runQuery
       . runSelectReturningList
       . select
       . limit_ limit
       . offset_ offset
+      . orderBy_ (paginationOrder_ p . _userName)
       . all_
       $ _newsUsers newsDB
   pure $ userToListItem <$> usrs
