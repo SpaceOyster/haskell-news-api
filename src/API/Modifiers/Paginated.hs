@@ -11,6 +11,7 @@
 
 module API.Modifiers.Paginated where
 
+import Data.Foldable (asum)
 import Data.Maybe
 import Data.Typeable
 import Servant
@@ -18,6 +19,7 @@ import Servant.Server.Internal.Context
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router
+import qualified Text.Parsec as Parsec
 
 type Offset = QueryParam "offset" Integer
 
@@ -25,6 +27,13 @@ type Limit = QueryParam "limit" Integer
 
 data Order = Asc | Desc
   deriving (Eq, Show)
+
+orderParser :: Parsec.Parsec String st Order
+orderParser =
+  asum
+    [ Parsec.string "asc" >> pure Asc,
+      Parsec.string "desc" >> pure Desc
+    ]
 
 data Pagination = Pagination
   { offset :: Integer,
