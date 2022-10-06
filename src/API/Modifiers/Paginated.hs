@@ -62,7 +62,8 @@ instance
 
 withDefaultPagination :: Pagination -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
 withDefaultPagination defaultPagination f mOffset mLimit =
-  let offset = fromMaybe (Config.offset defaultPagination) mOffset
-      limit = fromMaybe (Config.limit defaultPagination) mLimit
-      p = Pagination {offset, limit}
-   in f p
+  f $
+    Pagination
+      { offset = fromMaybe (offset defaultPagination) mOffset,
+        limit = fromMaybe (limit defaultPagination) mLimit,
+      }
