@@ -15,7 +15,7 @@ import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
-import Data.Text
+import qualified Data.Text as T
 import Data.Time.Clock
 import Database.Beam
 import Effects.Config
@@ -26,14 +26,14 @@ import Servant
 
 type UsersAPI =
   Paginated :> Get '[JSON] [UserListItem]
-    :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] Text
+    :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] T.Text
 
 users :: ServerT UsersAPI App
 users = listUsers :<|> addNewUser
 
 data UserListItem = UserListItem
-  { _userLIName :: Text,
-    _userLILogin :: Text,
+  { _userLIName :: T.Text,
+    _userLILogin :: T.Text,
     _userLIRegistrationDate :: UTCTime,
     _userLIIsAdmin :: Bool,
     _userLIIsAllowedToPost :: Bool
@@ -44,7 +44,7 @@ instance A.ToJSON UserListItem where
   toJSON =
     A.genericToJSON
       defaultOptions
-        { fieldLabelModifier = A.camelTo2 '-' . Prelude.drop 7
+        { fieldLabelModifier = A.camelTo2 '-' . drop 7
         }
 
 listUsers ::
@@ -86,7 +86,7 @@ addNewUser ::
   ) =>
   User ->
   NewUserJSON ->
-  m Text
+  m T.Text
 addNewUser usr (NewUserJSON newUser) =
   if _userIsAdmin usr then do_createUser else do_on_unauthorised
   where
