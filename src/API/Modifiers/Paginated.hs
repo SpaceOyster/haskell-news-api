@@ -27,10 +27,6 @@ import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router
 import qualified Text.Parsec as Parsec
 
-type Offset = QueryParam "offset" Integer
-
-type Limit = QueryParam "limit" Integer
-
 data Order = Asc | Desc
   deriving (Eq, Show)
 
