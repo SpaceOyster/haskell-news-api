@@ -51,7 +51,10 @@ instance Conf.Configured Order where
 instance FromHttpApiData Order where
   parseUrlPiece = parseOrder
 
-paginationOrder_ :: forall be s a. BeamSqlBackend be => Pagination -> QExpr be s a -> QOrd be s a
+paginationOrder_ ::
+  BeamSqlBackend be =>
+  Pagination ->
+  (QExpr be s a -> QOrd be s a)
 paginationOrder_ p = case order p of
   Asc -> asc_
   Desc -> desc_
