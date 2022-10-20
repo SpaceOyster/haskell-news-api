@@ -27,6 +27,13 @@ data Pagination = Pagination
 
 data Paginated deriving (Typeable)
 
+data PaginationConfig = PaginationConfig
+  { defaultOffset :: Integer,
+    defaultLimit :: Integer,
+    maxLimit :: Integer
+  }
+  deriving (Show)
+
 instance
   ( HasServer api context,
     HasContextEntry context Pagination,
