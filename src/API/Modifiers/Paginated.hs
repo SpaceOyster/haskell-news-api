@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -36,7 +37,7 @@ data PaginationConfig = PaginationConfig
 
 instance
   ( HasServer api context,
-    HasContextEntry context Pagination,
+    HasContextEntry context PaginationConfig,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
   ) =>
   HasServer (Paginated :> api) context
@@ -58,15 +59,13 @@ instance
     Delayed env (Server (Paginated :> api)) ->
     Router env
   route Proxy context delayed =
-    route api context (withDefaultPagination defaultPagination <$> delayed)
+    route api context (withPaginationConfig defaultPagination <$> delayed)
     where
-      defaultPagination = getContextEntry context :: Pagination
+      defaultPagination = getContextEntry context :: PaginationConfig
       api = Proxy :: Proxy (QueryParam "offset" Integer :> QueryParam "limit" Integer :> api)
 
-withDefaultPagination :: Pagination -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
-withDefaultPagination defaultPagination f mOffset mLimit =
-  f $
-    Pagination
-      { offset = fromMaybe (offset defaultPagination) mOffset,
-        limit = fromMaybe (limit defaultPagination) mLimit
-      }
+withPaginationConfig :: PaginationConfig -> (Pagination -> a) -> (Maybe Integer -> Maybe Integer -> a)
+withPaginationConfig pConfig f mOffset mLimit =
+  let offset = fromMaybe (defaultOffset pConfig) mOffset
+      limit = min (maxLimit pConfig) (fromMaybe (defaultLimit pConfig) mLimit)
+   in f $ Pagination {offset, limit}

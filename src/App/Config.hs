@@ -31,7 +31,7 @@ newtype ServerConfig = ServerConfig
 data APIConfig = APIConfig
   { rootUser :: Text,
     rootPassword :: Text,
-    pagination :: Pagination
+    pagination :: PaginationConfig
   }
   deriving (Show)
 
@@ -83,9 +83,10 @@ toAPIConfig :: C.Config -> IO APIConfig
 toAPIConfig cfg = do
   rootUser <- C.require cfg "rootUser"
   rootPassword <- C.require cfg "rootPassword"
-  offset <- C.lookupDefault 0 cfg "pagination.offset"
-  limit <- C.lookupDefault 25 cfg "pagination.limit"
-  let pagination = Pagination {..}
+  defaultOffset <- C.lookupDefault 0 cfg "pagination.offset"
+  maxLimit <- C.lookupDefault 100 cfg "pagination.max-limit"
+  defaultLimit <- C.lookupDefault maxLimit cfg "pagination.limit"
+  let pagination = PaginationConfig {..}
   return $ APIConfig {..}
 
 toPostgresConfig :: C.Config -> IO PostgresConfig
