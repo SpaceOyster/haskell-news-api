@@ -85,7 +85,6 @@ toAPIConfig cfg = do
   rootPassword <- C.require cfg "rootPassword"
   offset <- C.lookupDefault 0 cfg "pagination.offset"
   limit <- C.lookupDefault 25 cfg "pagination.limit"
-  order <- C.lookupDefault Asc cfg "pagination.order"
   let pagination = Pagination {..}
   return $ APIConfig {..}
 

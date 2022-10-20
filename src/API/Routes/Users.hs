@@ -63,7 +63,7 @@ listUsers p@Pagination {..} = do
       . select
       . limit_ limit
       . offset_ offset
-      . orderBy_ (paginationOrder_ p . _userName)
+      . orderBy_ (asc_ . _userName)
       . all_
       $ _newsUsers newsDB
   pure $ userToListItem <$> usrs
