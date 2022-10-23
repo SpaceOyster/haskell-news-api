@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module API.Modifiers.Sorted where
+module API.Modifiers.Sortable where
 
 import Data.Bifunctor (first)
 import qualified Data.Configurator.Types as Conf

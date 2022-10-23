@@ -28,7 +28,7 @@ library
       API
       API.Modifiers.Paginated
       API.Modifiers.Protected
-      API.Modifiers.Sorted
+      API.Modifiers.Sortable
       API.Routes.Categories
       API.Routes.Images
       API.Routes.News
