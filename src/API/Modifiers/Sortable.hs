@@ -53,11 +53,11 @@ instance FromHttpApiData Order where
 
 data SortingParams = SortingParams {order :: Order}
 
-paginationOrder_ ::
+sortingOrder_ ::
   BeamSqlBackend be =>
   SortingParams ->
   (QExpr be s a -> QOrd be s a)
-paginationOrder_ p = case order p of
+sortingOrder_ p = case order p of
   Asc -> asc_
   Desc -> desc_
 
