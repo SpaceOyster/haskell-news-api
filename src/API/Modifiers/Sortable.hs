@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -12,6 +13,8 @@
 module API.Modifiers.Sortable where
 
 import Data.Bifunctor (first)
+import Data.CaseInsensitive (CI)
+import qualified Data.CaseInsensitive as CI
 import qualified Data.Configurator.Types as Conf
 import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
@@ -67,6 +70,9 @@ data Sorted deriving (Typeable)
 
 data SortedBy (available :: [Symbol]) (deflt :: Symbol)
 
+
+class LookupNameWithDefault (availbale :: [Symbol]) (deflt :: Symbol) where
+  lookupName :: CI T.Text -> CI T.Text
 
 instance
   ( HasServer api context,
