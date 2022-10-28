@@ -21,6 +21,8 @@ import Database.Beam (asc_, desc_)
 import Database.Beam.Backend.SQL (BeamSqlBackend)
 import Database.Beam.Query (QExpr)
 import Database.Beam.Query.Internal (QOrd)
+import GHC.Base
+import GHC.TypeLits
 import Servant
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.ErrorFormatter
@@ -62,6 +64,9 @@ sortingOrder_ p = case order p of
   Desc -> desc_
 
 data Sorted deriving (Typeable)
+
+data SortedBy (available :: [Symbol]) (deflt :: Symbol)
+
 
 instance
   ( HasServer api context,
