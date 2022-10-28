@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -70,9 +71,22 @@ data Sorted deriving (Typeable)
 
 data SortedBy (available :: [Symbol]) (deflt :: Symbol)
 
+symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
+symbolCIText = CI.mk . T.pack . symbolVal
 
 class LookupNameWithDefault (availbale :: [Symbol]) (deflt :: Symbol) where
   lookupName :: CI T.Text -> CI T.Text
+
+instance KnownSymbol deflt => LookupNameWithDefault '[] deflt where
+  lookupName _ = symbolCIText $ Proxy @deflt
+
+instance
+  (KnownSymbol a, LookupNameWithDefault as deflt) =>
+  LookupNameWithDefault (a : as) deflt
+  where
+  lookupName t
+    | symbolCIText (Proxy @a) == t = t
+    | otherwise = lookupName @as @deflt t
 
 instance
   ( HasServer api context,
