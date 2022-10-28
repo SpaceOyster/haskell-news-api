@@ -68,7 +68,7 @@ sortingOrder_ p = case order p of
   Desc -> desc_
 
 
-data SortedBy (available :: [Symbol]) (deflt :: Symbol)
+data SortableBy (available :: [Symbol]) (deflt :: Symbol)
 
 symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
 symbolCIText = CI.mk . T.pack . symbolVal
@@ -92,24 +92,24 @@ instance
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
     LookupNameWithDefault available deflt
   ) =>
-  HasServer (SortedBy available deflt :> api) context
+  HasServer (SortableBy available deflt :> api) context
   where
-  type ServerT (SortedBy available deflt :> api) m = SortingParams -> ServerT api m
+  type ServerT (SortableBy available deflt :> api) m = SortingParams -> ServerT api m
 
   hoistServerWithContext ::
-    Proxy (SortedBy available deflt :> api) ->
+    Proxy (SortableBy available deflt :> api) ->
     Proxy context ->
     (forall x. m x -> n x) ->
-    ServerT (SortedBy available deflt :> api) m ->
-    ServerT (SortedBy available deflt :> api) n
+    ServerT (SortableBy available deflt :> api) m ->
+    ServerT (SortableBy available deflt :> api) n
   hoistServerWithContext _ pc nt s =
     hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
   route ::
     LookupNameWithDefault available deflt =>
-    Proxy (SortedBy available deflt :> api) ->
+    Proxy (SortableBy available deflt :> api) ->
     Context context ->
-    Delayed env (Server (SortedBy available deflt :> api)) ->
+    Delayed env (Server (SortableBy available deflt :> api)) ->
     Router env
   route Proxy context delayed =
     route api context (provideSortingParams <$> delayed)
