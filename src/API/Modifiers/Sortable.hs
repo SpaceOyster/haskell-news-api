@@ -57,7 +57,7 @@ instance Conf.Configured Order where
 instance FromHttpApiData Order where
   parseUrlPiece = parseOrder
 
-data SortingParams = SortingParams {order :: Order}
+data SortingParams = SortingParams {order :: Order, sortBy :: CI T.Text}
 
 sortingOrder_ ::
   BeamSqlBackend be =>
@@ -67,7 +67,6 @@ sortingOrder_ p = case order p of
   Asc -> asc_
   Desc -> desc_
 
-data Sorted deriving (Typeable)
 
 data SortedBy (available :: [Symbol]) (deflt :: Symbol)
 
@@ -90,36 +89,35 @@ instance
 
 instance
   ( HasServer api context,
-    HasContextEntry context SortingParams,
-    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
+    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
+    LookupNameWithDefault available deflt
   ) =>
-  HasServer (Sorted :> api) context
+  HasServer (SortedBy available deflt :> api) context
   where
-  type ServerT (Sorted :> api) m = SortingParams -> ServerT api m
+  type ServerT (SortedBy available deflt :> api) m = SortingParams -> ServerT api m
 
   hoistServerWithContext ::
-    Proxy (Sorted :> api) ->
+    Proxy (SortedBy available deflt :> api) ->
     Proxy context ->
     (forall x. m x -> n x) ->
-    ServerT (Sorted :> api) m ->
-    ServerT (Sorted :> api) n
+    ServerT (SortedBy available deflt :> api) m ->
+    ServerT (SortedBy available deflt :> api) n
   hoistServerWithContext _ pc nt s =
     hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
   route ::
-    Proxy (Sorted :> api) ->
+    LookupNameWithDefault available deflt =>
+    Proxy (SortedBy available deflt :> api) ->
     Context context ->
-    Delayed env (Server (Sorted :> api)) ->
+    Delayed env (Server (SortedBy available deflt :> api)) ->
     Router env
   route Proxy context delayed =
-    route api context (withDefaultPagination defaultPagination <$> delayed)
+    route api context (provideSortingParams <$> delayed)
     where
-      defaultPagination = getContextEntry context :: SortingParams
-      api = Proxy :: Proxy (QueryParam "order" Order :> api)
-
-withDefaultPagination :: SortingParams -> (SortingParams -> a) -> (Maybe Order -> a)
-withDefaultPagination defaultPagination f mOrder =
-  f $
-    SortingParams
-      { order = fromMaybe (order defaultPagination) mOrder
-      }
+      api = Proxy :: Proxy (QueryParam "order" Order :> QueryParam "sort-by" T.Text :> api)
+      provideSortingParams f mOrder mSortBy =
+        f $
+          SortingParams
+            { order = fromMaybe Asc mOrder,
+              sortBy = lookupName @available @deflt $ CI.mk $ fromMaybe mempty mSortBy
+            }
