@@ -3,18 +3,21 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API.Routes.Users where
 
 import API.Modifiers.Paginated
 import API.Modifiers.Protected ()
+import API.Modifiers.Sortable
 import App.Monad
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
+import qualified Data.Map as Map
 import qualified Data.Text as T
 import Data.Time.Clock
 import Database.Beam
@@ -25,7 +28,16 @@ import Entities.User
 import Servant
 
 type UsersAPI =
-  Paginated :> Get '[JSON] [UserListItem]
+  Paginated
+    :> SortableBy
+         '[ "name",
+            "login",
+            "registration-date",
+            "is-admin",
+            "is-allowed-to-post"
+          ]
+         ("name")
+    :> Get '[JSON] [UserListItem]
     :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] T.Text
 
 users :: ServerT UsersAPI App
@@ -55,18 +67,29 @@ listUsers ::
     MonadError ServerError m
   ) =>
   Pagination ->
+  SortingParams ->
   m [UserListItem]
-listUsers p@Pagination {..} = do
+listUsers p@Pagination {..} sortParams = do
+  Log.logInfo $ "Get /user sort-by=" <> CI.original (sortBy sortParams)
   usrs <-
     DB.runQuery
       . runSelectReturningList
       . select
       . limit_ limit
       . offset_ offset
-      . orderBy_ (asc_ . _userName)
+      . sortBy_ sortParams sorters
       . all_
       $ _newsUsers newsDB
   pure $ userToListItem <$> usrs
+  where
+    sorters User {..} =
+      Map.fromList
+        [ sorterFor "name" _userName,
+          sorterFor "login" _userLogin,
+          sorterFor "registration-Date" _userRegistrationDate,
+          sorterFor "is-admin" _userIsAdmin,
+          sorterFor "is-allowed-to-post" _userIsAllowedToPost
+        ]
 
 userToListItem :: User -> UserListItem
 userToListItem usr =
