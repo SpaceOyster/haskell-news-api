@@ -18,13 +18,15 @@ import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
 import qualified Data.Configurator.Types as Conf
 import Data.Foldable (asum)
+import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import qualified Data.Text.Extended as T
 import Data.Typeable
-import Database.Beam (asc_, desc_)
+import Data.Void
+import Database.Beam (Columnar, asc_, desc_, orderBy_)
 import Database.Beam.Backend.SQL (BeamSqlBackend)
-import Database.Beam.Query (QExpr)
-import Database.Beam.Query.Internal (QOrd)
+import Database.Beam.Query (QExpr, SqlOrderable)
+import Database.Beam.Query.Internal (Projectible, Q, QNested, QOrd, ThreadRewritable, WithRewrittenThread)
 import GHC.Base
 import GHC.TypeLits
 import Servant
@@ -67,6 +69,22 @@ sortingOrder_ p = case order p of
   Asc -> asc_
   Desc -> desc_
 
+
+sorterFor :: CI T.Text -> QExpr be s a -> (CI T.Text, QExpr be s Void)
+sorterFor name field = (name, coerce field)
+
+sortBy_ ::
+  ( BeamSqlBackend be,
+    BeamSqlBackend be',
+    Projectible be a,
+    SqlOrderable be (QOrd be' s' Void),
+    ThreadRewritable (QNested s) a
+  ) =>
+  SortingParams ->
+  (a -> Map.Map (CI T.Text) (QExpr be' s' Void)) ->
+  Q be db (QNested s) a ->
+  Q be db s (WithRewrittenThread (QNested s) s a)
+sortBy_ sorting sorters = orderBy_ (\a -> sortingOrder_ sorting $ sorters a Map.! sortBy sorting)
 
 data SortableBy (available :: [Symbol]) (deflt :: Symbol)
 
