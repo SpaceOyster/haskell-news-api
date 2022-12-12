@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -91,24 +92,25 @@ data SortableBy (available :: [Symbol]) (deflt :: Symbol)
 symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
 symbolCIText = CI.mk . T.pack . symbolVal
 
-class LookupNameWithDefault (availbale :: [Symbol]) (deflt :: Symbol) where
-  lookupName :: CI T.Text -> CI T.Text
+class LookupName (fieldNames :: [Symbol]) where
+  lookupName :: CI T.Text -> Maybe (CI T.Text)
 
-instance KnownSymbol deflt => LookupNameWithDefault '[] deflt where
-  lookupName _ = symbolCIText $ Proxy @deflt
+instance LookupName '[] where
+  lookupName _ = Nothing
 
 instance
-  (KnownSymbol a, LookupNameWithDefault as deflt) =>
-  LookupNameWithDefault (a : as) deflt
+  (KnownSymbol a, LookupName as) =>
+  LookupName (a : as)
   where
   lookupName t
-    | symbolCIText (Proxy @a) == t = t
-    | otherwise = lookupName @as @deflt t
+    | symbolCIText (Proxy @a) == t = Just t
+    | otherwise = lookupName @as t
 
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
-    LookupNameWithDefault available deflt
+    LookupName available,
+    KnownSymbol deflt
   ) =>
   HasServer (SortableBy available deflt :> api) context
   where
@@ -124,7 +126,9 @@ instance
     hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
   route ::
-    LookupNameWithDefault available deflt =>
+    ( KnownSymbol deflt,
+      LookupName available
+    ) =>
     Proxy (SortableBy available deflt :> api) ->
     Context context ->
     Delayed env (Server (SortableBy available deflt :> api)) ->
@@ -133,9 +137,12 @@ instance
     route api context (provideSortingParams <$> delayed)
     where
       api = Proxy :: Proxy (QueryParam "order" Order :> QueryParam "sort-by" T.Text :> api)
+      defaultSorter =
+        SortingParams
+          { order = Asc,
+            sortBy = symbolCIText (Proxy @deflt)
+          }
       provideSortingParams f mOrder mSortBy =
-        f $
-          SortingParams
-            { order = fromMaybe Asc mOrder,
-              sortBy = lookupName @available @deflt $ CI.mk $ fromMaybe mempty mSortBy
-            }
+        f $ fromMaybe defaultSorter $ do
+          sortBy <- lookupName @available $ CI.mk $ fromMaybe mempty mSortBy
+          pure $ SortingParams {order = fromMaybe Asc mOrder, sortBy}
