@@ -18,7 +18,7 @@ import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
 import qualified Data.Map as Map
-import qualified Data.Text as T
+import qualified Data.Text.Extended as T
 import Data.Time.Clock
 import Database.Beam
 import Effects.Config
@@ -36,7 +36,7 @@ type UsersAPI =
             "is-admin",
             "is-allowed-to-post"
           ]
-         ("name")
+         ('Ascend "name")
     :> Get '[JSON] [UserListItem]
     :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] T.Text
 
@@ -67,17 +67,17 @@ listUsers ::
     MonadError ServerError m
   ) =>
   Pagination ->
-  SortingParams ->
+  Sorting (CI T.Text) ->
   m [UserListItem]
-listUsers p@Pagination {..} sortParams = do
-  Log.logInfo $ "Get /user sort-by=" <> CI.original (sortBy sortParams)
+listUsers p@Pagination {..} sorting = do
+  Log.logInfo $ "Get /user sort-by=" <> T.tshow sorting
   usrs <-
     DB.runQuery
       . runSelectReturningList
       . select
       . limit_ limit
       . offset_ offset
-      . sortBy_ sortParams sorters
+      . sortBy_ sorting sorters
       . all_
       $ _newsUsers newsDB
   pure $ userToListItem <$> usrs
