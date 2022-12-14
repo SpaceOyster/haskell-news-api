@@ -60,6 +60,30 @@ instance Conf.Configured Order where
 instance FromHttpApiData Order where
   parseUrlPiece = parseOrder
 
+data Sorting a = Ascend a | Descend a
+  deriving (Eq, Show)
+
+unSorting :: Sorting a -> a
+unSorting (Ascend a) = a
+unSorting (Descend a) = a
+
+sortingParser :: Parsec.Parsec String st (a -> Sorting a)
+sortingParser =
+  asum
+    [ Parsec.string "asc" >> pure Ascend,
+      Parsec.string "desc" >> pure Descend
+    ]
+
+parseSorting :: T.Text -> Either T.Text (a -> Sorting a)
+parseSorting =
+  first T.tshow
+    . Parsec.parse sortingParser "Pagination Order"
+    . T.unpack
+    . T.toLower
+
+instance FromHttpApiData (a -> Sorting a) where
+  parseUrlPiece = parseSorting
+
 data SortingParams = SortingParams {order :: Order, sortBy :: CI T.Text}
 
 sortingOrder_ ::
