@@ -91,6 +91,20 @@ sortingOrder' ::
 sortingOrder' (Ascend _) = asc_
 sortingOrder' (Descend _) = desc_
 
+sortBy' ::
+  ( BeamSqlBackend be,
+    BeamSqlBackend be',
+    Projectible be a,
+    SqlOrderable be (QOrd be' s' Void),
+    ThreadRewritable (QNested s) a
+  ) =>
+  Sorting (CI T.Text) ->
+  (a -> Map.Map (CI T.Text) (QExpr be' s' Void)) ->
+  Q be db (QNested s) a ->
+  Q be db s (WithRewrittenThread (QNested s) s a)
+sortBy' sorting sorters = orderBy_ $ \a ->
+  sortingOrder' sorting (sorters a Map.! unSorting sorting)
+
 data SortingParams = SortingParams {order :: Order, sortBy :: CI T.Text}
 
 sortingOrder_ ::
