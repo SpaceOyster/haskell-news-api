@@ -84,6 +84,13 @@ parseSorting =
 instance FromHttpApiData (a -> Sorting a) where
   parseUrlPiece = parseSorting
 
+sortingOrder' ::
+  BeamSqlBackend be =>
+  Sorting a' ->
+  (QExpr be s a -> QOrd be s a)
+sortingOrder' (Ascend _) = asc_
+sortingOrder' (Descend _) = desc_
+
 data SortingParams = SortingParams {order :: Order, sortBy :: CI T.Text}
 
 sortingOrder_ ::
