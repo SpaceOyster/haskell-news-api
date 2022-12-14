@@ -105,6 +105,15 @@ sortBy' ::
 sortBy' sorting sorters = orderBy_ $ \a ->
   sortingOrder' sorting (sorters a Map.! unSorting sorting)
 
+class ReifySorting (sorting :: Sorting Symbol) where
+  reifySorting :: Sorting (CI T.Text)
+
+instance (KnownSymbol a) => ReifySorting ('Ascend a) where
+  reifySorting = Ascend $ symbolCIText $ Proxy @a
+
+instance (KnownSymbol a) => ReifySorting ('Descend a) where
+  reifySorting = Descend $ symbolCIText $ Proxy @a
+
 data SortingParams = SortingParams {order :: Order, sortBy :: CI T.Text}
 
 sortingOrder_ ::
