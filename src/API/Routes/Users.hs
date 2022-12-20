@@ -83,13 +83,12 @@ listUsers p@Pagination {..} sorting = do
   pure $ userToListItem <$> usrs
   where
     sorters User {..} =
-      Map.fromList
-        [ sorterFor "name" _userName,
-          sorterFor "login" _userLogin,
-          sorterFor "registration-Date" _userRegistrationDate,
-          sorterFor "is-admin" _userIsAdmin,
-          sorterFor "is-allowed-to-post" _userIsAllowedToPost
-        ]
+      [ sorterFor "name" _userName,
+        sorterFor "login" _userLogin,
+        sorterFor "registration-Date" _userRegistrationDate,
+        sorterFor "is-admin" _userIsAdmin,
+        sorterFor "is-allowed-to-post" _userIsAllowedToPost
+      ]
 
 userToListItem :: User -> UserListItem
 userToListItem usr =

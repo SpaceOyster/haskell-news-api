@@ -22,10 +22,17 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Text.Extended as T
 import Data.Typeable
 import Data.Void
-import Database.Beam (Columnar, asc_, desc_, orderBy_)
+import Database.Beam (asc_, desc_, orderBy_)
 import Database.Beam.Backend.SQL (BeamSqlBackend)
 import Database.Beam.Query (QExpr, SqlOrderable)
-import Database.Beam.Query.Internal (Projectible, Q, QNested, QOrd, ThreadRewritable, WithRewrittenThread)
+import Database.Beam.Query.Internal
+  ( Projectible,
+    Q,
+    QNested,
+    QOrd,
+    ThreadRewritable,
+    WithRewrittenThread,
+  )
 import GHC.Base
 import GHC.TypeLits
 import Servant
@@ -73,11 +80,13 @@ sortBy_ ::
     ThreadRewritable (QNested s) a
   ) =>
   Sorting (CI T.Text) ->
-  (a -> Map.Map (CI T.Text) (QExpr be' s' Void)) ->
+  (a -> [(CI T.Text, QExpr be' s' Void)]) ->
   Q be db (QNested s) a ->
   Q be db s (WithRewrittenThread (QNested s) s a)
 sortBy_ sorting sorters = orderBy_ $ \a ->
-  sortingOrder_ sorting (sorters a Map.! unSorting sorting)
+  sortingOrder_ sorting (sortersMap a Map.! unSorting sorting)
+  where
+    sortersMap a = Map.fromList $ sorters a
 
 class ReifySorting (sorting :: Sorting Symbol) where
   reifySorting :: Sorting (CI T.Text)
@@ -88,13 +97,8 @@ instance (KnownSymbol a) => ReifySorting ('Ascend a) where
 instance (KnownSymbol a) => ReifySorting ('Descend a) where
   reifySorting = Descend $ symbolCIText $ Proxy @a
 
-
-
-
 sorterFor :: CI T.Text -> QExpr be s a -> (CI T.Text, QExpr be s Void)
 sorterFor name field = (name, coerce field)
-
-
 
 symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
 symbolCIText = CI.mk . T.pack . symbolVal
