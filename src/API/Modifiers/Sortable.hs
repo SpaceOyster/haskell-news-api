@@ -79,6 +79,10 @@ taggedColumnToPair (TaggedC t f) = (t, coerce f)
 
 taggedColumnsToMap :: [TaggedColumn be s a] -> Map.Map (CI T.Text) (QExpr be s Void)
 taggedColumnsToMap = Map.fromList . fmap taggedColumnToPair
+
+sorterFor_ :: CI T.Text -> QExpr be s a -> TaggedColumn be s Void
+sorterFor_ t = TaggedC t . coerce
+
 sortBy_ ::
   ( BeamSqlBackend be,
     BeamSqlBackend be',
@@ -87,13 +91,13 @@ sortBy_ ::
     ThreadRewritable (QNested s) a
   ) =>
   Sorting (CI T.Text) ->
-  (a -> [(CI T.Text, QExpr be' s' Void)]) ->
+  (a -> [TaggedColumn be' s' Void]) ->
   Q be db (QNested s) a ->
   Q be db s (WithRewrittenThread (QNested s) s a)
 sortBy_ sorting sorters = orderBy_ $ \a ->
   sortingOrder_ sorting (sortersMap a Map.! unSorting sorting)
   where
-    sortersMap a = Map.fromList $ sorters a
+    sortersMap a = taggedColumnsToMap $ sorters a
 
 class ReifySorting (sorting :: Sorting Symbol) where
   reifySorting :: Sorting (CI T.Text)

@@ -83,11 +83,11 @@ listUsers p@Pagination {..} sorting = do
   pure $ userToListItem <$> usrs
   where
     sorters User {..} =
-      [ sorterFor "name" _userName,
-        sorterFor "login" _userLogin,
-        sorterFor "registration-Date" _userRegistrationDate,
-        sorterFor "is-admin" _userIsAdmin,
-        sorterFor "is-allowed-to-post" _userIsAllowedToPost
+      [ sorterFor_ "name" _userName,
+        sorterFor_ "login" _userLogin,
+        sorterFor_ "registration-Date" _userRegistrationDate,
+        sorterFor_ "is-admin" _userIsAdmin,
+        sorterFor_ "is-allowed-to-post" _userIsAllowedToPost
       ]
 
 userToListItem :: User -> UserListItem
