@@ -72,6 +72,13 @@ sortingOrder_ ::
 sortingOrder_ (Ascend _) = asc_
 sortingOrder_ (Descend _) = desc_
 
+data TaggedColumn be s a = TaggedC (CI T.Text) (QExpr be s a)
+
+taggedColumnToPair :: TaggedColumn be s a -> (CI T.Text, QExpr be s Void)
+taggedColumnToPair (TaggedC t f) = (t, coerce f)
+
+taggedColumnsToMap :: [TaggedColumn be s a] -> Map.Map (CI T.Text) (QExpr be s Void)
+taggedColumnsToMap = Map.fromList . fmap taggedColumnToPair
 sortBy_ ::
   ( BeamSqlBackend be,
     BeamSqlBackend be',
