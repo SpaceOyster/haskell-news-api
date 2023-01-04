@@ -43,21 +43,17 @@ type UsersAPI =
 users :: ServerT UsersAPI App
 users = listUsers :<|> addNewUser
 
-data UserListItem = UserListItem
-  { _userLIName :: T.Text,
-    _userLILogin :: T.Text,
-    _userLIRegistrationDate :: UTCTime,
-    _userLIIsAdmin :: Bool,
-    _userLIIsAllowedToPost :: Bool
-  }
-  deriving (Show, Generic)
+newtype UserListItem = UserListItem User
 
 instance A.ToJSON UserListItem where
-  toJSON =
-    A.genericToJSON
-      defaultOptions
-        { fieldLabelModifier = A.camelTo2 '-' . drop 7
-        }
+  toJSON (UserListItem User {..}) =
+    A.object
+      [ "name" A..= _userName,
+        "login" A..= CI.original _userLogin,
+        "registration-date" A..= _userRegistrationDate,
+        "is-admin" A..= _userIsAdmin,
+        "is-allowed-to-post" A..= _userIsAllowedToPost
+      ]
 
 listUsers ::
   ( DB.MonadDatabase m,
@@ -80,7 +76,7 @@ listUsers p@Pagination {..} sorting = do
       . sortBy_ sorting sorters
       . all_
       $ _newsUsers newsDB
-  pure $ userToListItem <$> usrs
+  pure $ UserListItem <$> usrs
   where
     sorters User {..} =
       [ sorterFor_ "name" _userName,
@@ -89,16 +85,6 @@ listUsers p@Pagination {..} sorting = do
         sorterFor_ "is-admin" _userIsAdmin,
         sorterFor_ "is-allowed-to-post" _userIsAllowedToPost
       ]
-
-userToListItem :: User -> UserListItem
-userToListItem usr =
-  UserListItem
-    { _userLIName = _userName usr,
-      _userLILogin = CI.original $ _userLogin usr,
-      _userLIRegistrationDate = _userRegistrationDate usr,
-      _userLIIsAdmin = _userIsAdmin usr,
-      _userLIIsAllowedToPost = _userIsAllowedToPost usr
-    }
 
 addNewUser ::
   ( DB.MonadDatabase m,
