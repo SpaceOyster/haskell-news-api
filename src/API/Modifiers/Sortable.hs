@@ -108,9 +108,6 @@ instance (KnownSymbol a) => ReifySorting ('Ascend a) where
 instance (KnownSymbol a) => ReifySorting ('Descend a) where
   reifySorting = Descend $ symbolCIText $ Proxy @a
 
-sorterFor :: CI T.Text -> QExpr be s a -> (CI T.Text, QExpr be s Void)
-sorterFor name field = (name, coerce field)
-
 symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
 symbolCIText = CI.mk . T.pack . symbolVal
 
