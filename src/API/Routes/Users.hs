@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -17,9 +17,7 @@ import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
-import qualified Data.Map as Map
 import qualified Data.Text.Extended as T
-import Data.Time.Clock
 import Database.Beam
 import Effects.Config
 import Effects.Database as DB
@@ -65,7 +63,7 @@ listUsers ::
   Pagination ->
   Sorting (CI T.Text) ->
   m [UserListItem]
-listUsers p@Pagination {..} sorting = do
+listUsers Pagination {..} sorting = do
   Log.logInfo $ "Get /user sort-by=" <> T.tshow sorting
   usrs <-
     DB.runQuery
@@ -79,12 +77,14 @@ listUsers p@Pagination {..} sorting = do
   pure $ UserListItem <$> usrs
   where
     sorters User {..} =
-      [ sorterFor_ "name" _userName,
-        sorterFor_ "login" _userLogin,
-        sorterFor_ "registration-Date" _userRegistrationDate,
-        sorterFor_ "is-admin" _userIsAdmin,
-        sorterFor_ "is-allowed-to-post" _userIsAllowedToPost
-      ]
+      SortingApp
+        ( sorterFor_ @"name" _userName
+            .:. sorterFor_ @"login" _userLogin
+            .:. sorterFor_ @"registration-Date" _userRegistrationDate
+            .:. sorterFor_ @"is-admin" _userIsAdmin
+            .:. sorterFor_ @"is-allowed-to-post" _userIsAllowedToPost
+            .:. ColNil
+        )
 
 addNewUser ::
   ( DB.MonadDatabase m,

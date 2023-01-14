@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -11,14 +12,28 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module API.Modifiers.Sortable where
+module API.Modifiers.Sortable
+  ( sortBy_,
+    (.:.),
+    ColumnList (ColNil),
+    sorterFor_,
+    Sorting (Ascend, Descend),
+    SortableBy,
+    SortingApp (SortingApp, unSortingApp),
+  )
+where
 
+import API.Modifiers.Internal
+  ( ColumnList (ColNil),
+    LookupColumn (lookupColumn),
+    TaggedColumn (TaggedCol),
+    (.:.),
+  )
 import Data.Bifunctor (first)
 import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
 import Data.Foldable (asum)
-import qualified Data.Map as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Text.Extended as T
 import Data.Typeable
 import Data.Void
@@ -72,32 +87,29 @@ sortingOrder_ ::
 sortingOrder_ (Ascend _) = asc_
 sortingOrder_ (Descend _) = desc_
 
-data TaggedColumn be s a = TaggedC (CI T.Text) (QExpr be s a)
+sorterFor_ :: forall tag be s a. QExpr be s a -> TaggedColumn tag be s a
+sorterFor_ = TaggedCol
 
-taggedColumnToPair :: TaggedColumn be s a -> (CI T.Text, QExpr be s Void)
-taggedColumnToPair (TaggedC t f) = (t, coerce f)
-
-taggedColumnsToMap :: [TaggedColumn be s a] -> Map.Map (CI T.Text) (QExpr be s Void)
-taggedColumnsToMap = Map.fromList . fmap taggedColumnToPair
-
-sorterFor_ :: CI T.Text -> QExpr be s a -> TaggedColumn be s Void
-sorterFor_ t = TaggedC t . coerce
+newtype SortingApp be s sortspec = SortingApp
+  { unSortingApp :: ColumnList be s sortspec
+  }
 
 sortBy_ ::
   ( BeamSqlBackend be,
     BeamSqlBackend be',
     Projectible be a,
     SqlOrderable be (QOrd be' s' Void),
-    ThreadRewritable (QNested s) a
+    ThreadRewritable (QNested s) a,
+    LookupColumn be (QNested s) (ColumnList be (QNested s) sortspec)
   ) =>
   Sorting (CI T.Text) ->
-  (a -> [TaggedColumn be' s' Void]) ->
+  (a -> SortingApp be (QNested s) sortspec) ->
   Q be db (QNested s) a ->
   Q be db s (WithRewrittenThread (QNested s) s a)
-sortBy_ sorting sorters = orderBy_ $ \a ->
-  sortingOrder_ sorting (sortersMap a Map.! unSorting sorting)
-  where
-    sortersMap a = taggedColumnsToMap $ sorters a
+sortBy_ sorting sortApp = orderBy_ $ \a ->
+  let colList = unSortingApp $ sortApp a
+      colName = unSorting sorting
+   in sortingOrder_ sorting (fromJust $ lookupColumn colList colName)
 
 class ReifySorting (sorting :: Sorting Symbol) where
   reifySorting :: Sorting (CI T.Text)
