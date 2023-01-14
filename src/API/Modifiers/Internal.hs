@@ -38,6 +38,9 @@ infixr 3 .:.
 
 infixr 3 `ColCons`
 
+symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
+symbolCIText = CI.mk . T.pack . symbolVal
+
 class LookupColumn be s a | a -> be s where
   lookupColumn :: a -> CI T.Text -> Maybe (QExpr be s Void)
 

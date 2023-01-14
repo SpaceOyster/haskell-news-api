@@ -27,6 +27,7 @@ import API.Modifiers.Internal
   ( ColumnList (ColNil),
     LookupColumn (lookupColumn),
     TaggedColumn (TaggedCol),
+    symbolCIText,
     (.:.),
   )
 import Data.Bifunctor (first)
@@ -119,9 +120,6 @@ instance (KnownSymbol a) => ReifySorting ('Ascend a) where
 
 instance (KnownSymbol a) => ReifySorting ('Descend a) where
   reifySorting = Descend $ symbolCIText $ Proxy @a
-
-symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
-symbolCIText = CI.mk . T.pack . symbolVal
 
 class LookupName (fieldNames :: [Symbol]) where
   lookupName :: CI T.Text -> Maybe (CI T.Text)
