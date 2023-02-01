@@ -81,6 +81,10 @@ parseSorting =
 instance FromHttpApiData (a -> Sorting a) where
   parseUrlPiece = parseSorting
 
+type family ExtractColumnNameFromSorting (sorting :: Sorting Symbol) where
+  ExtractColumnNameFromSorting ('Ascend a) = a
+  ExtractColumnNameFromSorting ('Descend a) = a
+
 sortingOrder_ ::
   BeamSqlBackend be =>
   Sorting a' ->
