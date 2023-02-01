@@ -114,3 +114,9 @@ type family GetColumnTags a :: [Symbol] where
   GetColumnTags (ColumnList be s '[]) = '[]
   GetColumnTags (ColumnList be s ('Tagged tag a ': as)) =
     tag ': GetColumnTags (ColumnList be s as)
+
+type family ColumnIsPresent (a :: Symbol) as :: Bool where
+  ColumnIsPresent a (ColumnList be s l) =
+    a `Elem` GetColumnTags (ColumnList be s l)
+
+infix 3 `ColumnIsPresent`
