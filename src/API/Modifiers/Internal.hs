@@ -87,6 +87,20 @@ type family HasToBeInList (a :: Symbol) (cols :: [Symbol]) :: Constraint where
 type family IsSubset (a :: [k]) (b :: [k]) :: Bool where
   IsSubset a a = 'True
   IsSubset (a ': as) bs = Elem a bs && IsSubset as bs
+
+type family HasToBeSubset (a :: [k]) (b :: [k]) :: Constraint where
+  HasToBeSubset a b =
+    If
+      (IsSubset a b)
+      (() :: Constraint)
+      ( TypeError
+          ( 'Text "List '"
+              ':<>: 'ShowType a
+              ':<>: 'Text "' is not a subset of list '"
+              ':<>: 'ShowType b
+          )
+      )
+
 class ReifyBool (b :: Bool) where
   reifyBool :: Proxy b -> Bool
 
