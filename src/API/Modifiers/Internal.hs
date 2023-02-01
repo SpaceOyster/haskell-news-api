@@ -120,3 +120,17 @@ type family ColumnIsPresent (a :: Symbol) as :: Bool where
     a `Elem` GetColumnTags (ColumnList be s l)
 
 infix 3 `ColumnIsPresent`
+
+type family HasToBeProvided (a :: Symbol) cols :: Constraint where
+  HasToBeProvided a cols =
+    If
+      (a `ColumnIsPresent` cols)
+      (() :: Constraint)
+      ( TypeError
+          ( 'Text "Column '"
+              ':<>: 'ShowType a
+              ':<>: 'Text "' is not present in '"
+              ':<>: 'ShowType cols
+              ':<>: 'Text "' type"
+          )
+      )
