@@ -33,6 +33,7 @@ import API.Modifiers.Internal
     symbolCIText,
     (.:.),
   )
+import qualified API.Modifiers.Internal as Internal
 import Data.Bifunctor (first)
 import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
@@ -150,6 +151,17 @@ type SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =
     ValidNamesList available
   ) ::
     Constraint
+
+validateSortingName ::
+  forall available deflt.
+  SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =>
+  (CI T.Text -> Sorting (CI T.Text)) ->
+  CI T.Text ->
+  Sorting (CI T.Text)
+validateSortingName ordering name =
+  if Internal.isNameValid @available name
+    then ordering name
+    else reifySorting @deflt
 
 data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)
 
