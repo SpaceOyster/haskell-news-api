@@ -68,3 +68,12 @@ type family Elem (a :: k) (l :: [k]) :: Bool where
   Elem a (_ ': as) = Elem a as
 
 infix 3 `Elem`
+
+class ReifyBool (b :: Bool) where
+  reifyBool :: Proxy b -> Bool
+
+instance ReifyBool 'True where
+  reifyBool _ = True
+
+instance ReifyBool 'False where
+  reifyBool _ = False
