@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -134,3 +135,12 @@ type family HasToBeProvided (a :: Symbol) cols :: Constraint where
               ':<>: 'Text "' type"
           )
       )
+
+class ValidNamesList (available :: [Symbol]) where
+  isNameValid :: CI T.Text -> Bool
+
+instance ValidNamesList '[] where
+  isNameValid _ = False
+
+instance (KnownSymbol a, ValidNamesList as) => ValidNamesList (a ': as) where
+  isNameValid n = (symbolCIText (Proxy @a) == n) || isNameValid @as n
