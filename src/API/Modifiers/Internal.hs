@@ -109,3 +109,8 @@ instance ReifyBool 'True where
 
 instance ReifyBool 'False where
   reifyBool _ = False
+
+type family GetColumnTags a :: [Symbol] where
+  GetColumnTags (ColumnList be s '[]) = '[]
+  GetColumnTags (ColumnList be s ('Tagged tag a ': as)) =
+    tag ': GetColumnTags (ColumnList be s as)
