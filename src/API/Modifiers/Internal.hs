@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module API.Modifiers.Internal where
 
@@ -69,6 +70,19 @@ type family Elem (a :: k) (l :: [k]) :: Bool where
 
 infix 3 `Elem`
 
+type family HasToBeInList (a :: Symbol) (cols :: [Symbol]) :: Constraint where
+  HasToBeInList a cols =
+    If
+      (Elem a cols)
+      (() :: Constraint)
+      ( TypeError
+          ( 'Text "Symbol '"
+              ':<>: 'ShowType a
+              ':<>: 'Text "' is not present in '"
+              ':<>: 'ShowType cols
+              ':<>: 'Text "' type"
+          )
+      )
 
 type family IsSubset (a :: [k]) (b :: [k]) :: Bool where
   IsSubset a a = 'True
