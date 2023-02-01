@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -25,8 +26,10 @@ where
 
 import API.Modifiers.Internal
   ( ColumnList (ColNil),
+    HasToBeInList,
     LookupColumn (lookupColumn),
     TaggedColumn (TaggedCol),
+    ValidNamesList (),
     symbolCIText,
     (.:.),
   )
@@ -138,6 +141,15 @@ instance
   lookupName t
     | symbolCIText (Proxy @a) == t = Just t
     | otherwise = lookupName @as t
+type DefaultColumnName (deflt :: Sorting Symbol) =
+  ExtractColumnNameFromSorting deflt
+
+type SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =
+  ( HasToBeInList (DefaultColumnName deflt) available,
+    ReifySorting deflt,
+    ValidNamesList available
+  ) ::
+    Constraint
 
 data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)
 
