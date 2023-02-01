@@ -69,6 +69,10 @@ type family Elem (a :: k) (l :: [k]) :: Bool where
 
 infix 3 `Elem`
 
+
+type family IsSubset (a :: [k]) (b :: [k]) :: Bool where
+  IsSubset a a = 'True
+  IsSubset (a ': as) bs = Elem a bs && IsSubset as bs
 class ReifyBool (b :: Bool) where
   reifyBool :: Proxy b -> Bool
 
