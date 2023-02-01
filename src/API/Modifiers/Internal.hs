@@ -15,6 +15,7 @@ module API.Modifiers.Internal where
 import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
 import qualified Data.Text.Extended as T
+import Data.Type.Bool
 import Data.Typeable
 import Data.Void
 import Database.Beam.Query (QExpr)
@@ -60,3 +61,10 @@ instance
     if symbolCIText (Proxy @tag) == name
       then Just $ coerce c
       else lookupColumn as name
+
+type family Elem (a :: k) (l :: [k]) :: Bool where
+  Elem a '[] = 'False
+  Elem a (a ': as) = 'True
+  Elem a (_ ': as) = Elem a as
+
+infix 3 `Elem`
