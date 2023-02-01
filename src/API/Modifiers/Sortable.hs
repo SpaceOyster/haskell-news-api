@@ -85,6 +85,15 @@ parseSorting =
 instance FromHttpApiData (a -> Sorting a) where
   parseUrlPiece = parseSorting
 
+class ReifySorting (sorting :: Sorting Symbol) where
+  reifySorting :: Sorting (CI T.Text)
+
+instance (KnownSymbol a) => ReifySorting ('Ascend a) where
+  reifySorting = Ascend $ symbolCIText $ Proxy @a
+
+instance (KnownSymbol a) => ReifySorting ('Descend a) where
+  reifySorting = Descend $ symbolCIText $ Proxy @a
+
 type family ExtractColumnNameFromSorting (sorting :: Sorting Symbol) where
   ExtractColumnNameFromSorting ('Ascend a) = a
   ExtractColumnNameFromSorting ('Descend a) = a
@@ -120,28 +129,6 @@ sortBy_ sorting sortApp = orderBy_ $ \a ->
       colName = unSorting sorting
    in sortingOrder_ sorting (fromJust $ lookupColumn colList colName)
 
-class ReifySorting (sorting :: Sorting Symbol) where
-  reifySorting :: Sorting (CI T.Text)
-
-instance (KnownSymbol a) => ReifySorting ('Ascend a) where
-  reifySorting = Ascend $ symbolCIText $ Proxy @a
-
-instance (KnownSymbol a) => ReifySorting ('Descend a) where
-  reifySorting = Descend $ symbolCIText $ Proxy @a
-
-class LookupName (fieldNames :: [Symbol]) where
-  lookupName :: CI T.Text -> Maybe (CI T.Text)
-
-instance LookupName '[] where
-  lookupName _ = Nothing
-
-instance
-  (KnownSymbol a, LookupName as) =>
-  LookupName (a : as)
-  where
-  lookupName t
-    | symbolCIText (Proxy @a) == t = Just t
-    | otherwise = lookupName @as t
 type DefaultColumnName (deflt :: Sorting Symbol) =
   ExtractColumnNameFromSorting deflt
 
