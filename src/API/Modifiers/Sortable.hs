@@ -168,7 +168,7 @@ data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
-    LookupName available,
+    SortingSpec available deflt,
     ReifySorting deflt
   ) =>
   HasServer (SortableBy available deflt :> api) context
@@ -185,7 +185,7 @@ instance
     hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
   route ::
-    ( LookupName available,
+    ( SortingSpec available deflt,
       ReifySorting deflt
     ) =>
     Proxy (SortableBy available deflt :> api) ->
@@ -197,7 +197,7 @@ instance
     where
       api = Proxy :: Proxy (QueryParam "order" (a -> Sorting a) :> QueryParam "sort-by" T.Text :> api)
       defaultSorting = reifySorting @deflt
-      provideSorting f mOrder mSortBy = f $ fromMaybe defaultSorting $ do
-        ordering <- mOrder
-        sortField <- mSortBy
-        ordering <$> lookupName @available (CI.mk sortField)
+      provideSorting f mOrder mSortBy =
+        let ordering = fromMaybe Ascend mOrder
+            sortField = fromMaybe (T.pack "") mSortBy
+         in f . validateSortingName @available @deflt ordering $ CI.mk sortField
