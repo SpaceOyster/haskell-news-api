@@ -95,9 +95,9 @@ type family HasToBeSubset (a :: [k]) (b :: [k]) :: Constraint where
       (IsSubset a b)
       (() :: Constraint)
       ( TypeError
-          ( 'Text "List '"
+          ( 'Text "List "
               ':<>: 'ShowType a
-              ':<>: 'Text "' is not a subset of list '"
+              ':<>: 'Text " is not a subset of list "
               ':<>: 'ShowType b
           )
       )
