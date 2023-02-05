@@ -21,6 +21,7 @@ module API.Modifiers.Sortable
     Sorting (Ascend, Descend),
     SortableBy,
     SortingApp (SortingApp, unSortingApp),
+    SortingRequest (SortingRequest, unSortingRequest),
   )
 where
 
@@ -110,6 +111,10 @@ sorterFor_ = TaggedCol
 
 newtype SortingApp be s sortspec = SortingApp
   { unSortingApp :: ColumnList be s sortspec
+  }
+
+newtype SortingRequest (available :: [Symbol]) = SortingRequest
+  { unSortingRequest :: Sorting (CI T.Text)
   }
 
 sortBy_ ::
