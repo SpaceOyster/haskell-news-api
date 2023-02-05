@@ -61,10 +61,16 @@ listUsers ::
     MonadError ServerError m
   ) =>
   Pagination ->
-  Sorting (CI T.Text) ->
+  SortingRequest
+    '[ "name",
+       "login",
+       "registration-date",
+       "is-admin",
+       "is-allowed-to-post"
+     ] ->
   m [UserListItem]
 listUsers Pagination {..} sorting = do
-  Log.logInfo $ "Get /user sort-by=" <> T.tshow sorting
+  Log.logInfo $ "Get /user sort-by=" <> T.tshow (unSortingRequest sorting)
   usrs <-
     DB.runQuery
       . runSelectReturningList

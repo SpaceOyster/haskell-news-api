@@ -28,6 +28,8 @@ where
 import API.Modifiers.Internal
   ( ColumnList (ColNil),
     HasToBeInList,
+    HasToBeSubset,
+    ListOfTags,
     LookupColumn (lookupColumn),
     TaggedColumn (TaggedCol),
     ValidNamesList (),
@@ -123,13 +125,14 @@ sortBy_ ::
     Projectible be a,
     SqlOrderable be (QOrd be' s' Void),
     ThreadRewritable (QNested s) a,
-    LookupColumn be (QNested s) (ColumnList be (QNested s) sortspec)
+    LookupColumn be (QNested s) (ColumnList be (QNested s) sortspec),
+    HasToBeSubset available (ListOfTags sortspec)
   ) =>
-  Sorting (CI T.Text) ->
+  SortingRequest available ->
   (a -> SortingApp be (QNested s) sortspec) ->
   Q be db (QNested s) a ->
   Q be db s (WithRewrittenThread (QNested s) s a)
-sortBy_ sorting sortApp = orderBy_ $ \a ->
+sortBy_ (SortingRequest sorting) sortApp = orderBy_ $ \a ->
   let colList = unSortingApp $ sortApp a
       colName = unSorting sorting
    in sortingOrder_ sorting (fromJust $ lookupColumn colList colName)
@@ -165,7 +168,7 @@ instance
   ) =>
   HasServer (SortableBy available deflt :> api) context
   where
-  type ServerT (SortableBy available deflt :> api) m = Sorting (CI T.Text) -> ServerT api m
+  type ServerT (SortableBy available deflt :> api) m = SortingRequest available -> ServerT api m
 
   hoistServerWithContext ::
     Proxy (SortableBy available deflt :> api) ->
@@ -192,4 +195,4 @@ instance
       provideSorting f mOrder mSortBy =
         let ordering = fromMaybe Ascend mOrder
             sortField = fromMaybe (T.pack "") mSortBy
-         in f . validateSortingName @available @deflt ordering $ CI.mk sortField
+         in f . SortingRequest . validateSortingName @available @deflt ordering $ CI.mk sortField
