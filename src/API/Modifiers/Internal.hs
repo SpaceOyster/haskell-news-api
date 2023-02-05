@@ -86,6 +86,7 @@ type family HasToBeInList (a :: Symbol) (cols :: [Symbol]) :: Constraint where
       )
 
 type family IsSubset (a :: [k]) (b :: [k]) :: Bool where
+  IsSubset '[] _ = 'True
   IsSubset a a = 'True
   IsSubset (a ': as) bs = Elem a bs && IsSubset as bs
 
