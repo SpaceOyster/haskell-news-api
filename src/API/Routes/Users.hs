@@ -86,7 +86,7 @@ listUsers Pagination {..} sorting = do
       SortingApp
         ( sorterFor_ @"name" _userName
             .:. sorterFor_ @"login" _userLogin
-            .:. sorterFor_ @"registration-Date" _userRegistrationDate
+            .:. sorterFor_ @"registration-date" _userRegistrationDate
             .:. sorterFor_ @"is-admin" _userIsAdmin
             .:. sorterFor_ @"is-allowed-to-post" _userIsAllowedToPost
             .:. ColNil
