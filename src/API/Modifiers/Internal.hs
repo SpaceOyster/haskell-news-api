@@ -30,6 +30,10 @@ newtype TaggedColumn (tag :: Symbol) be s a = TaggedCol
   { unTaggedCol :: QExpr be s a
   }
 
+type family ListOfTags (a :: [Tagged Type]) :: [Symbol] where
+  ListOfTags '[] = '[]
+  ListOfTags ('Tagged tag a ': as) = tag ': ListOfTags as
+
 data ColumnList be s a where
   ColNil :: ColumnList be s '[]
   ColCons :: TaggedColumn tag be s a -> ColumnList be s as -> ColumnList be s ('Tagged tag a ': as)
