@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       API
+      API.Modifiers.Beam.Sortable
       API.Modifiers.Internal
       API.Modifiers.Paginated
       API.Modifiers.Protected

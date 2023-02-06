@@ -8,6 +8,7 @@
 
 module API.Routes.Users where
 
+import API.Modifiers.Beam.Sortable
 import API.Modifiers.Paginated
 import API.Modifiers.Protected ()
 import API.Modifiers.Sortable
