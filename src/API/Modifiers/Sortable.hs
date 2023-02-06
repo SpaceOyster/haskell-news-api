@@ -143,7 +143,6 @@ instance
     route api context (provideSorting <$> delayed)
     where
       api = Proxy :: Proxy (QueryParam "order" (a -> Sorting a) :> QueryParam "sort-by" T.Text :> api)
-      defaultSorting = reifySorting @deflt
       provideSorting f mOrder mSortBy =
         let ordering = fromMaybe Ascend mOrder
             sortField = fromMaybe (T.pack "") mSortBy
