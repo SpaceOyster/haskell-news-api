@@ -75,13 +75,13 @@ type family Elem (a :: k) (l :: [k]) :: Bool where
 
 infix 3 `Elem`
 
-type family HasToBeInList (a :: Symbol) (cols :: [Symbol]) :: Constraint where
+type family HasToBeInList (a :: k) (cols :: [k]) :: Constraint where
   HasToBeInList a cols =
     If
       (Elem a cols)
       (() :: Constraint)
       ( TypeError
-          ( 'Text "Symbol '"
+          ( 'Text "Type literal '"
               ':<>: 'ShowType a
               ':<>: 'Text "' is not present in '"
               ':<>: 'ShowType cols
