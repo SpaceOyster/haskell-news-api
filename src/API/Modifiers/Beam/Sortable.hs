@@ -49,4 +49,5 @@ sortBy_ ::
 sortBy_ (SortingRequest sorting) sortApp = orderBy_ $ \a ->
   let colList = unSortingApp $ sortApp a
       colName = unSorting sorting
-   in sortingOrder_ sorting (fromJust $ lookupColumn colList colName)
+      sortingOrder = sortingOrder_ sorting
+   in sortingOrder (fromJust $ lookupColumn colList colName)
