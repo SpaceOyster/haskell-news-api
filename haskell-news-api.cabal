@@ -48,6 +48,7 @@ library
       Entities.Image
       Entities.News
       Entities.User
+      GHC.TypeLits.Extended
       Handlers.Database
       Handlers.Logger
       Handlers.Logger.File

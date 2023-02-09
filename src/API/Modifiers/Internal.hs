@@ -22,7 +22,7 @@ import Data.Typeable
 import Data.Void
 import Database.Beam.Query (QExpr)
 import GHC.Base
-import GHC.TypeLits
+import GHC.TypeLits.Extended
 
 data Tagged t = Tagged Symbol t
 
@@ -45,11 +45,6 @@ infixr 3 .:.
 
 infixr 3 `ColCons`
 
-symbolText :: (KnownSymbol a) => Proxy a -> T.Text
-symbolText = T.pack . symbolVal
-
-symbolCIText :: (KnownSymbol a) => Proxy a -> CI T.Text
-symbolCIText = CI.mk . symbolText
 
 class LookupColumn be s a | a -> be s where
   lookupColumn :: a -> CI T.Text -> Maybe (QExpr be s Void)

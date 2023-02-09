@@ -29,7 +29,6 @@ import API.Modifiers.Internal
     HasToBeInList,
     ListOfTags,
     ValidNamesList (),
-    symbolCIText,
     (.:.),
   )
 import qualified API.Modifiers.Internal as Internal
@@ -41,7 +40,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Text.Extended as T
 import Data.Typeable
 import GHC.Base
-import GHC.TypeLits
+import GHC.TypeLits.Extended
 import Servant
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.ErrorFormatter
