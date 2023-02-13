@@ -1,17 +1,28 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module API.Modifiers.Internal.PolyKinds where
 
+import Data.CaseInsensitive (CI)
+import qualified Data.CaseInsensitive as CI
+import qualified Data.Text.Extended as T
 import Data.Type.Bool (If, type (&&))
 import Data.Typeable (Proxy (..))
 import GHC.Base (Constraint, Symbol)
 import GHC.TypeLits.Extended
   ( ErrorMessage (ShowType, Text, (:<>:)),
+    KnownSymbol,
+    Symbol,
     TypeError,
+    symbolCIText,
   )
 
 type family Elem (a :: k) (l :: [k]) :: Bool where
@@ -61,3 +72,12 @@ instance ReifyBool 'True where
 
 instance ReifyBool 'False where
   reifyBool _ = False
+
+class ValidNamesList (available :: [Symbol]) where
+  isNameValid :: CI T.Text -> Bool
+
+instance ValidNamesList '[] where
+  isNameValid _ = False
+
+instance (KnownSymbol a, ValidNamesList as) => ValidNamesList (a ': as) where
+  isNameValid n = (symbolCIText (Proxy @a) == n) || isNameValid @as n
