@@ -88,11 +88,11 @@ newtype SortingRequest (available :: [Symbol]) = SortingRequest
   { unSortingRequest :: Sorting (CI T.Text)
   }
 
-type DefaultColumnName (deflt :: Sorting Symbol) =
-  ExtractColumnNameFromSorting deflt
+type SortingHasToBeAvailable (sort :: Sorting Symbol) (available :: [Symbol]) =
+  (HasToBeInList (ExtractColumnNameFromSorting sort) available) :: Constraint
 
 type SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =
-  ( HasToBeInList (DefaultColumnName deflt) available,
+  ( SortingHasToBeAvailable deflt available,
     ReifySorting deflt,
     ValidNamesList available
   ) ::
