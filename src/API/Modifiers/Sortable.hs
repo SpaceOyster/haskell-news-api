@@ -102,11 +102,11 @@ validateSortingName ::
   forall available deflt.
   SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =>
   (CI T.Text -> Sorting (CI T.Text)) ->
-  CI T.Text ->
+  T.Text ->
   Sorting (CI T.Text)
 validateSortingName ordering name =
-  if Internal.isNameValid @available name
-    then ordering name
+  if Internal.isNameValid @available $ CI.mk name
+    then ordering $ CI.mk name
     else reifySorting @deflt
 
 data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)
@@ -145,4 +145,4 @@ instance
       provideSorting f mOrder mSortBy =
         let ordering = fromMaybe Ascend mOrder
             sortField = fromMaybe (T.pack "") mSortBy
-         in f . SortingRequest . validateSortingName @available @deflt ordering $ CI.mk sortField
+         in f . SortingRequest . validateSortingName @available @deflt ordering $ sortField
