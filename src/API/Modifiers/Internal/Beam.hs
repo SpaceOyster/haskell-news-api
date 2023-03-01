@@ -14,7 +14,7 @@ module API.Modifiers.Internal.Beam where
 
 import API.Modifiers.Internal.PolyKinds
 import API.Modifiers.Internal.Tagged
-import Data.CaseInsensitive (CI)
+import qualified Data.CaseInsensitive as CI
 import qualified Data.Text.Extended as T
 import Data.Type.Bool (If)
 import Data.Typeable (Proxy (..))
@@ -39,7 +39,7 @@ infixr 3 .:.
 infixr 3 `ColCons`
 
 class LookupColumn be s a | a -> be s where
-  lookupColumn :: a -> CI T.Text -> Maybe (QExpr be s Void)
+  lookupColumn :: a -> T.Text -> Maybe (QExpr be s Void)
 
 instance LookupColumn be s (ColumnList be s '[]) where
   lookupColumn _ _ = Nothing
@@ -51,7 +51,7 @@ instance
   LookupColumn be s (ColumnList be s ('Tagged tag a ': as))
   where
   lookupColumn (TaggedCol c `ColCons` as) name =
-    if symbolCIText (Proxy @tag) == name
+    if symbolCIText (Proxy @tag) == CI.mk name
       then Just $ coerce c
       else lookupColumn as name
 

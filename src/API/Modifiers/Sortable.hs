@@ -36,8 +36,6 @@ import API.Modifiers.Internal
   )
 import qualified API.Modifiers.Internal as Internal
 import Data.Bifunctor (first)
-import Data.CaseInsensitive (CI)
-import qualified Data.CaseInsensitive as CI
 import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text.Extended as T
@@ -79,18 +77,18 @@ instance FromHttpApiData (a -> Sorting a) where
   parseUrlPiece = parseSorting
 
 class ReifySorting (sorting :: Sorting Symbol) where
-  reifySorting :: Sorting (CI T.Text)
+  reifySorting :: Sorting T.Text
 
 instance (KnownSymbol a) => ReifySorting ('Ascend a) where
-  reifySorting = Ascend $ symbolCIText $ Proxy @a
+  reifySorting = Ascend $ symbolText $ Proxy @a
 
 instance (KnownSymbol a) => ReifySorting ('Descend a) where
-  reifySorting = Descend $ symbolCIText $ Proxy @a
+  reifySorting = Descend $ symbolText $ Proxy @a
 
 type ExtractColumnNameFromSorting (sorting :: Sorting Symbol) = UnSorting sorting
 
 newtype SortingRequest (available :: [Symbol]) (deflt :: Sorting Symbol) = SortingRequest
-  { unSortingRequest :: Sorting (CI T.Text)
+  { unSortingRequest :: Sorting T.Text
   }
 
 type SortingHasToBeAvailable (sort :: Sorting Symbol) (available :: [Symbol]) =
@@ -106,12 +104,12 @@ type SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =
 validateSortingName ::
   forall available deflt.
   SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =>
-  (CI T.Text -> Sorting (CI T.Text)) ->
+  (T.Text -> Sorting T.Text) ->
   T.Text ->
-  Sorting (CI T.Text)
+  Sorting T.Text
 validateSortingName ordering name =
-  if Internal.isNameValid @available $ CI.mk name
-    then ordering $ CI.mk name
+  if Internal.isNameValid @available name
+    then ordering name
     else reifySorting @deflt
 
 data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)

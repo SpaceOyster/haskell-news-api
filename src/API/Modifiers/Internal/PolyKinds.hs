@@ -11,7 +11,6 @@
 
 module API.Modifiers.Internal.PolyKinds where
 
-import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
 import qualified Data.Text.Extended as T
 import Data.Type.Bool (If, type (&&))
@@ -74,10 +73,10 @@ instance ReifyBool 'False where
   reifyBool _ = False
 
 class ValidNamesList (available :: [Symbol]) where
-  isNameValid :: CI T.Text -> Bool
+  isNameValid :: T.Text -> Bool
 
 instance ValidNamesList '[] where
   isNameValid _ = False
 
 instance (KnownSymbol a, ValidNamesList as) => ValidNamesList (a ': as) where
-  isNameValid n = (symbolCIText (Proxy @a) == n) || isNameValid @as n
+  isNameValid n = (symbolCIText (Proxy @a) == CI.mk n) || isNameValid @as n
