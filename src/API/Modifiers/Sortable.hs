@@ -21,6 +21,9 @@ module API.Modifiers.Sortable
     SortingRequest (SortingRequest, unSortingRequest),
     ListOfTags,
     unSorting,
+    UnSorting,
+    SortingHasToBeAvailable,
+    ReifySorting (..),
   )
 where
 
