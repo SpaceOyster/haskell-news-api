@@ -84,9 +84,7 @@ instance (KnownSymbol a) => ReifySorting ('Ascend a) where
 instance (KnownSymbol a) => ReifySorting ('Descend a) where
   reifySorting = Descend $ symbolCIText $ Proxy @a
 
-type family ExtractColumnNameFromSorting (sorting :: Sorting Symbol) where
-  ExtractColumnNameFromSorting ('Ascend a) = a
-  ExtractColumnNameFromSorting ('Descend a) = a
+type ExtractColumnNameFromSorting (sorting :: Sorting Symbol) = UnSorting sorting
 
 newtype SortingRequest (available :: [Symbol]) = SortingRequest
   { unSortingRequest :: Sorting (CI T.Text)
