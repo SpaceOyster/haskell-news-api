@@ -67,15 +67,15 @@ type family ColumnIsPresent (a :: Symbol) as :: Bool where
 infix 3 `ColumnIsPresent`
 
 type family HasToBeProvided (a :: Symbol) cols :: Constraint where
-  HasToBeProvided a cols =
+  HasToBeProvided a (ColumnList be s as) =
     If
-      (a `ColumnIsPresent` cols)
+      (a `ColumnIsPresent` ColumnList be s as)
       (() :: Constraint)
       ( TypeError
           ( 'Text "Column '"
               ':<>: 'ShowType a
               ':<>: 'Text "' is not present in '"
-              ':<>: 'ShowType cols
+              ':<>: 'ShowType (ColumnList be s as)
               ':<>: 'Text "' type"
           )
       )
