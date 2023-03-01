@@ -89,7 +89,7 @@ instance (KnownSymbol a) => ReifySorting ('Descend a) where
 
 type ExtractColumnNameFromSorting (sorting :: Sorting Symbol) = UnSorting sorting
 
-newtype SortingRequest (available :: [Symbol]) = SortingRequest
+newtype SortingRequest (available :: [Symbol]) (deflt :: Sorting Symbol) = SortingRequest
   { unSortingRequest :: Sorting (CI T.Text)
   }
 
@@ -124,7 +124,7 @@ instance
   ) =>
   HasServer (SortableBy available deflt :> api) context
   where
-  type ServerT (SortableBy available deflt :> api) m = SortingRequest available -> ServerT api m
+  type ServerT (SortableBy available deflt :> api) m = SortingRequest available deflt -> ServerT api m
 
   hoistServerWithContext ::
     Proxy (SortableBy available deflt :> api) ->

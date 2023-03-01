@@ -68,7 +68,8 @@ listUsers ::
        "registration-date",
        "is-admin",
        "is-allowed-to-post"
-     ] ->
+     ]
+    ('Ascend "name") ->
   m [UserListItem]
 listUsers Pagination {..} sorting = do
   Log.logInfo $ "Get /user sort-by=" <> T.tshow (unSortingRequest sorting)

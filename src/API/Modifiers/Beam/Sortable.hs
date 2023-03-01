@@ -42,7 +42,7 @@ sortBy_ ::
     LookupColumn be (QNested s) (ColumnList be (QNested s) sortspec),
     HasToBeSubset available (ListOfTags sortspec)
   ) =>
-  SortingRequest available ->
+  SortingRequest available deflt ->
   (a -> SortingApp be (QNested s) sortspec) ->
   Q be db (QNested s) a ->
   Q be db s (WithRewrittenThread (QNested s) s a)
