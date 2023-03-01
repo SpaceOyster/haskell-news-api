@@ -54,6 +54,10 @@ unSorting :: Sorting a -> a
 unSorting (Ascend a) = a
 unSorting (Descend a) = a
 
+type family UnSorting a where
+  UnSorting ('Ascend a) = a
+  UnSorting ('Descend a) = a
+
 sortingParser :: Parsec.Parsec String st (a -> Sorting a)
 sortingParser =
   asum
