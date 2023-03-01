@@ -48,8 +48,7 @@ composeBeamOrdering ::
     BeamSqlBackend be',
     ReifySorting deflt,
     LookupColumn be' s' (ColumnList be s sortspec),
-    ObtainColumn be' s' (ColumnList be s sortspec) (UnSorting deflt),
-    HasToBeProvided (UnSorting deflt) (ColumnList be s sortspec)
+    ObtainColumn be' s' (ColumnList be s sortspec) (UnSorting deflt)
   ) =>
   SortingApp be s sortspec ->
   SortingRequest available deflt ->
@@ -74,8 +73,7 @@ sortBy_ ::
     HasToBeSubset available (ListOfTags sortspec),
     SortingHasToBeAvailable deflt available,
     LookupColumn be (QNested s) (ColumnList be (QNested s) sortspec),
-    ObtainColumn be (QNested s) (ColumnList be (QNested s) sortspec) (UnSorting deflt),
-    HasToBeProvided (UnSorting deflt) (ColumnList be (QNested s) sortspec)
+    ObtainColumn be (QNested s) (ColumnList be (QNested s) sortspec) (UnSorting deflt)
   ) =>
   SortingRequest available deflt ->
   (a -> SortingApp be (QNested s) sortspec) ->
