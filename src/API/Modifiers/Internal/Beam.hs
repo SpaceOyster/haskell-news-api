@@ -79,3 +79,23 @@ type family HasToBeProvided (a :: Symbol) cols :: Constraint where
               ':<>: 'Text "' type"
           )
       )
+
+class ObtainColumn be s a (tag :: Symbol) | a tag -> be s where
+  obtainColumn :: a -> Proxy tag -> QExpr be s Void
+
+instance
+  {-# OVERLAPPABLE #-}
+  ( HasToBeProvided tag (ColumnList be s ('Tagged tag' a ': as)),
+    ObtainColumn be s (ColumnList be s as) tag
+  ) =>
+  ObtainColumn be s (ColumnList be s ('Tagged tag' a ': as)) tag
+  where
+  obtainColumn (TaggedCol _c `ColCons` as) = obtainColumn as
+
+instance
+  {-# OVERLAPPING #-}
+  (HasToBeProvided tag (ColumnList be s ('Tagged tag a ': as))) =>
+  ObtainColumn be s (ColumnList be s ('Tagged tag a ': as)) tag
+  where
+  obtainColumn (TaggedCol c `ColCons` _as) _ =
+    (coerce :: QExpr be s a -> QExpr be s Void) c
