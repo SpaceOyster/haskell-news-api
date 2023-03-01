@@ -19,7 +19,6 @@ import GHC.Base (Constraint, Symbol)
 import GHC.TypeLits.Extended
   ( ErrorMessage (ShowType, Text, (:<>:)),
     KnownSymbol,
-    Symbol,
     TypeError,
     symbolCIText,
   )
