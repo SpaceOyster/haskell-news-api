@@ -9,8 +9,24 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module API.Modifiers.Beam.Sortable where
+module API.Modifiers.Beam.Sortable
+  ( SortingApp (..),
+    sorterFor_,
+    sortingOrder_,
+    composeBeamOrdering,
+    sortBy_,
+    ColumnList (..),
+    (.:.),
+  )
+where
 
+import API.Modifiers.Beam.Internal
+  ( ColumnList (..),
+    LookupColumn (lookupColumn),
+    ObtainColumn (obtainColumn),
+    TaggedColumn (TaggedCol, unTaggedCol),
+    (.:.),
+  )
 import API.Modifiers.Internal
 import API.Modifiers.Sortable
 import Data.Maybe (fromMaybe)

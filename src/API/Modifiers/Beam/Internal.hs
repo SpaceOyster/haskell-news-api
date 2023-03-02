@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module API.Modifiers.Internal.Beam where
+module API.Modifiers.Beam.Internal where
 
 import API.Modifiers.Internal.PolyKinds
 import API.Modifiers.Internal.Tagged

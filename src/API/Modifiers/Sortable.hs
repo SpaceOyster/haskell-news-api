@@ -14,9 +14,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module API.Modifiers.Sortable
-  ( (.:.),
-    ColumnList (ColNil),
-    Sorting (Ascend, Descend),
+  ( Sorting (Ascend, Descend),
     SortableBy,
     SortingRequest (SortingRequest, unSortingRequest),
     ListOfTags,
@@ -28,11 +26,9 @@ module API.Modifiers.Sortable
 where
 
 import API.Modifiers.Internal
-  ( ColumnList (ColNil),
-    HasToBeInList,
+  ( HasToBeInList,
     ListOfTags,
     ValidNamesList (),
-    (.:.),
   )
 import qualified API.Modifiers.Internal as Internal
 import Data.Bifunctor (first)
