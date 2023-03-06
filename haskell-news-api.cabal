@@ -28,6 +28,7 @@ library
       API
       API.Modifiers.Beam.Internal
       API.Modifiers.Beam.Sortable
+      API.Modifiers.Filterable
       API.Modifiers.Internal
       API.Modifiers.Internal.PolyKinds
       API.Modifiers.Internal.Tagged
