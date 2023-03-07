@@ -55,7 +55,7 @@ type family UnSorting a where
   UnSorting ('Ascend a) = a
   UnSorting ('Descend a) = a
 
-sortingParser :: Parsec.Parsec String st (a -> Sorting a)
+sortingParser :: Parsec.Parsec T.Text st (a -> Sorting a)
 sortingParser =
   asum
     [ Parsec.string "asc" >> pure Ascend,
@@ -66,7 +66,6 @@ parseSorting :: T.Text -> Either T.Text (a -> Sorting a)
 parseSorting =
   first T.tshow
     . Parsec.parse sortingParser "Pagination Order"
-    . T.unpack
     . T.toLower
 
 instance FromHttpApiData (a -> Sorting a) where
