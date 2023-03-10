@@ -21,6 +21,7 @@ import GHC.TypeLits.Extended
     KnownSymbol,
     TypeError,
     symbolCIText,
+    symbolVal,
   )
 
 type family Elem (a :: k) (l :: [k]) :: Bool where
@@ -79,3 +80,15 @@ instance ValidNamesList '[] where
 
 instance (KnownSymbol a, ValidNamesList as) => ValidNamesList (a ': as) where
   isNameValid n = (symbolCIText (Proxy @a) == CI.mk n) || isNameValid @as n
+
+class ReifySymbolsList a where
+  reifySymbolsList :: Proxy a -> [String]
+
+instance ReifySymbolsList '[] where
+  reifySymbolsList _ = []
+
+instance
+  (KnownSymbol a, ReifySymbolsList as) =>
+  ReifySymbolsList (a ': as)
+  where
+  reifySymbolsList _ = symbolVal (Proxy @a) : reifySymbolsList (Proxy @as)
