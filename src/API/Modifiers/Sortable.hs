@@ -32,7 +32,6 @@ import API.Modifiers.Internal
   )
 import qualified API.Modifiers.Internal as Internal
 import Data.Bifunctor (first)
-import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text.Extended as T
 import Data.Typeable
@@ -57,7 +56,7 @@ type family UnSorting a where
 
 sortingParser :: Parsec.Parsec T.Text st (a -> Sorting a)
 sortingParser =
-  asum
+  Parsec.choice
     [ Parsec.string "asc" >> pure Ascend,
       Parsec.string "desc" >> pure Descend
     ]
