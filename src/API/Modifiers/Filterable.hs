@@ -12,11 +12,13 @@
 module API.Modifiers.Filterable
   ( FilterableBy (..),
     Tagged (..),
+    Predicate (..),
     (:?),
   )
 where
 
 import API.Modifiers.Internal.Tagged (Tagged (..), (:?))
+import Control.Applicative ((<|>))
 import qualified Data.Text.Extended as T
 import Servant
   ( Context,
@@ -33,6 +35,8 @@ import Servant.Server.Internal.ErrorFormatter
   ( MkContextWithErrorFormatter,
   )
 import Servant.Server.Internal.Router (Router)
+import qualified Text.Parsec as Parsec
+
 data FilterableBy (a :: [Tagged Type])
 
 instance
@@ -67,3 +71,15 @@ data Predicate
   | GreaterThan
   | Not Predicate
   deriving (Show, Eq, Ord)
+
+predicateParser :: Parsec.Parsec T.Text st Predicate
+predicateParser =
+  Parsec.choice
+    [ Parsec.string "eq" >> pure Equals,
+      Parsec.string "lt" >> pure LessThan,
+      Parsec.string "gt" >> pure GreaterThan,
+      Parsec.string "neq" >> pure (Not Equals),
+      (Parsec.string "nlt" <|> Parsec.string "gte") >> pure (Not LessThan),
+      (Parsec.string "ngt" <|> Parsec.string "lte") >> pure (Not GreaterThan)
+    ]
+
