@@ -97,7 +97,7 @@ type SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =
 
 validateSortingName ::
   forall available deflt.
-  SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =>
+  (SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol)) =>
   (T.Text -> Sorting T.Text) ->
   T.Text ->
   Sorting T.Text
@@ -107,6 +107,8 @@ validateSortingName ordering name =
     else reifySorting @deflt
 
 data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)
+
+-- TODO: add HasDocs and HasClient instances
 
 instance
   ( HasServer api context,
