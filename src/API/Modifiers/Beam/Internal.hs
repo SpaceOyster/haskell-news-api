@@ -38,6 +38,23 @@ infixr 3 .:.
 
 infixr 3 `ColCons`
 
+class LookupColumn' be s a typ | typ a -> be s where
+  lookupColumn' :: a -> T.Text -> Maybe (QExpr be s typ)
+
+instance LookupColumn' be s (ColumnList be s '[]) typ where
+  lookupColumn' _ _ = Nothing
+
+instance
+  ( KnownSymbol tag,
+    LookupColumn' be s (ColumnList be s as) typ
+  ) =>
+  LookupColumn' be s (ColumnList be s ('Tagged tag typ ': as)) typ
+  where
+  lookupColumn' (TaggedCol c `ColCons` as) name =
+    if symbolCIText (Proxy @tag) == CI.mk name
+      then Just c
+      else lookupColumn' as name
+
 class LookupColumn be s a | a -> be s where
   lookupColumn :: a -> T.Text -> Maybe (QExpr be s Void)
 
@@ -79,6 +96,25 @@ type family HasToBeProvided (a :: Symbol) cols :: Constraint where
               ':<>: 'Text "' type"
           )
       )
+
+class ObtainColumn' be s a (tag :: Symbol) typ | a tag -> be s where
+  obtainColumn' :: a -> Proxy tag -> Proxy typ -> QExpr be s typ
+
+instance
+  {-# OVERLAPPABLE #-}
+  ( HasToBeProvided tag (ColumnList be s ('Tagged tag' a ': as)),
+    ObtainColumn' be s (ColumnList be s as) tag typ
+  ) =>
+  ObtainColumn' be s (ColumnList be s ('Tagged tag' a ': as)) tag typ
+  where
+  obtainColumn' (TaggedCol _c `ColCons` as) = obtainColumn' as
+
+instance
+  {-# OVERLAPPING #-}
+  (HasToBeProvided tag (ColumnList be s ('Tagged tag a ': as))) =>
+  ObtainColumn' be s (ColumnList be s ('Tagged tag a ': as)) tag a
+  where
+  obtainColumn' (TaggedCol c `ColCons` _as) _ _ = c
 
 class ObtainColumn be s a (tag :: Symbol) | a tag -> be s where
   obtainColumn :: a -> Proxy tag -> QExpr be s Void
