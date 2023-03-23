@@ -60,3 +60,10 @@ instance
   route Proxy context delayed = route api context delayed
     where
       api = Proxy :: Proxy api
+
+data Predicate
+  = Equals
+  | LessThan
+  | GreaterThan
+  | Not Predicate
+  deriving (Show, Eq, Ord)
