@@ -11,6 +11,7 @@
 
 module API.Modifiers.Filterable
   ( FilterableBy (..),
+    FilterableBy',
     Tagged (..),
     Filter (..),
     Predicate (..),
@@ -91,3 +92,5 @@ data Filter (tag :: Symbol) a = Filter
     getValue :: a
   }
 
+
+data FilterableBy' (tag :: Symbol) a
