@@ -12,6 +12,7 @@
 module API.Modifiers.Filterable
   ( FilterableBy (..),
     Tagged (..),
+    Filter (..),
     Predicate (..),
     (:?),
   )
@@ -20,6 +21,7 @@ where
 import API.Modifiers.Internal.Tagged (Tagged (..), (:?))
 import Control.Applicative ((<|>))
 import qualified Data.Text.Extended as T
+import GHC.Base (Symbol)
 import Servant
   ( Context,
     ErrorFormatters,
@@ -82,4 +84,10 @@ predicateParser =
       (Parsec.string "nlt" <|> Parsec.string "gte") >> pure (Not LessThan),
       (Parsec.string "ngt" <|> Parsec.string "lte") >> pure (Not GreaterThan)
     ]
+
+
+data Filter (tag :: Symbol) a = Filter
+  { getPredicate :: Predicate,
+    getValue :: a
+  }
 
