@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module API.Modifiers.Filterable
-  ( FilterableBy (..),
+  ( FilterableBy,
     FilterableBy',
     Tagged (..),
     Filter (..),
@@ -19,10 +19,19 @@ module API.Modifiers.Filterable
   )
 where
 
-import API.Modifiers.Internal.Tagged (Tagged (..), (:?))
+import API.Modifiers.Internal.PolyKinds
+  ( HasToBeInList,
+    ReifySymbolsList (..),
+  )
+import API.Modifiers.Internal.Tagged
+  ( Tagged (..),
+    (:?),
+  )
 import Control.Applicative ((<|>))
+import Data.Kind (Type)
 import qualified Data.Text.Extended as T
 import GHC.Base (Symbol)
+import GHC.TypeLits (AppendSymbol, KnownSymbol)
 import Servant
   ( Context,
     ErrorFormatters,
@@ -30,6 +39,7 @@ import Servant
     HasContextEntry,
     HasServer (..),
     Proxy (..),
+    QueryParam (..),
     Server,
     type (:>),
   )
@@ -94,3 +104,36 @@ data Filter (tag :: Symbol) a = Filter
 
 
 data FilterableBy' (tag :: Symbol) a
+
+instance
+  ( HasServer api context,
+    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
+    Ord a,
+    KnownSymbol tag,
+    FromHttpApiData a
+  ) =>
+  HasServer (FilterableBy' tag a :> api) context
+  where
+  type ServerT (FilterableBy' tag a :> api) m = Maybe (Filter tag a) -> ServerT api m
+
+  hoistServerWithContext ::
+    Proxy (FilterableBy' tag a :> api) ->
+    Proxy context ->
+    (forall x. m x -> n x) ->
+    ServerT (FilterableBy' tag a :> api) m ->
+    ServerT (FilterableBy' tag a :> api) n
+  hoistServerWithContext _ pc nt s =
+    hoistServerWithContext (Proxy :: Proxy api) pc nt . s
+
+  route ::
+    Proxy (FilterableBy' tag a :> api) ->
+    Context context ->
+    Delayed env (Server (FilterableBy' tag a :> api)) ->
+    Router env
+  route Proxy context delayed =
+    route api context (withQParam <$> delayed)
+    where
+      api = Proxy :: Proxy (QueryParam tag a :> api)
+      withQParam :: (Maybe (Filter tag a) -> x) -> (Maybe a -> x)
+      withQParam f Nothing = f Nothing
+      withQParam f (Just a) = f $ Just (Filter Equals a)
