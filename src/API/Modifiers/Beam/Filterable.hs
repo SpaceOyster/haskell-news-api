@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -37,22 +38,25 @@ newtype FilteringApp be s filterspec = FilteringApp
 filterFor_ :: forall tag be s a. QExpr be s a -> TaggedColumn tag be s a
 filterFor_ = TaggedCol
 
+type BeamBackendSupportsValueSyntaxFor be typ =
+  HasSqlValueSyntax
+    ( Sql92ExpressionValueSyntax
+        ( Sql92SelectTableExpressionSyntax
+            ( Sql92SelectSelectTableSyntax
+                ( Sql92SelectSyntax
+                    (BeamSqlBackendSyntax be)
+                )
+            )
+        )
+    )
+    typ
+
 composeBeamFilter ::
   forall be s s' tag typ filterspec.
   ( BeamSqlBackend be,
     ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
     HasSqlEqualityCheck be typ,
-    HasSqlValueSyntax
-      ( Sql92ExpressionValueSyntax
-          ( Sql92SelectTableExpressionSyntax
-              ( Sql92SelectSelectTableSyntax
-                  ( Sql92SelectSyntax
-                      (BeamSqlBackendSyntax be)
-                  )
-              )
-          )
-      )
-      typ
+    BeamBackendSupportsValueSyntaxFor be typ
   ) =>
   FilteringApp be s filterspec ->
   Filter tag typ ->
@@ -66,20 +70,9 @@ composeBeamFilter (FilteringApp colList) (Filter pred a) =
 filterBy_ ::
   ( BeamSqlBackend be,
     Projectible be a,
-    -- SqlValable (QGenExpr ctx be s typ),
     ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
     HasSqlEqualityCheck be typ,
-    HasSqlValueSyntax
-      ( Sql92ExpressionValueSyntax
-          ( Sql92SelectTableExpressionSyntax
-              ( Sql92SelectSelectTableSyntax
-                  ( Sql92SelectSyntax
-                      (BeamSqlBackendSyntax be)
-                  )
-              )
-          )
-      )
-      typ
+    BeamBackendSupportsValueSyntaxFor be typ
   ) =>
   Filter tag typ ->
   (a -> FilteringApp be s filterspec) ->
