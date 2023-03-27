@@ -32,7 +32,7 @@ import API.Modifiers.Internal.Tagged
 import Control.Applicative ((<|>))
 import Data.Kind (Type)
 import qualified Data.Text.Extended as T
-import GHC.Base (Symbol)
+import GHC.Base (Constraint, Symbol)
 import GHC.TypeLits (AppendSymbol, KnownSymbol)
 import Servant
   ( Context,
@@ -107,6 +107,19 @@ data Filter (tag :: Symbol) a = Filter
 
 data FilterableBy' (tag :: Symbol) a
 
+
+type family GeneratedTagsAreKnownSymbol (tag :: Symbol) :: Constraint where
+  GeneratedTagsAreKnownSymbol tag =
+    ( KnownSymbol (AppendSymbol tag "_eq"),
+      KnownSymbol (AppendSymbol tag "_lt"),
+      KnownSymbol (AppendSymbol tag "_gt"),
+      KnownSymbol (AppendSymbol tag "_neq"),
+      KnownSymbol (AppendSymbol tag "_nlt"),
+      KnownSymbol (AppendSymbol tag "_ngt"),
+      KnownSymbol (AppendSymbol tag "_gte"),
+      KnownSymbol (AppendSymbol tag "_lte")
+    ) ::
+      Constraint
 
 type family GenerateFilterQueryParams (filterName :: Symbol) typ where
   GenerateFilterQueryParams filterName typ =
