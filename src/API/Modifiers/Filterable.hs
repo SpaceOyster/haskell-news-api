@@ -20,8 +20,10 @@ module API.Modifiers.Filterable
 where
 
 import API.Modifiers.Internal.PolyKinds
-  ( HasToBeInList,
+  ( Foldr,
+    HasToBeInList,
     ReifySymbolsList (..),
+    Replicate,
   )
 import API.Modifiers.Internal.Tagged
   ( Tagged (..),
@@ -117,6 +119,10 @@ type family GenerateFilterQueryParams (filterName :: Symbol) typ where
        QueryParam (AppendSymbol filterName "_gte") typ,
        QueryParam (AppendSymbol filterName "_lte") typ
      ]
+
+type family GenerateFilterAPIType (filterName :: Symbol) typ api where
+  GenerateFilterAPIType filterName typ api =
+    Foldr (:>) api (GenerateFilterQueryParams filterName typ)
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
