@@ -94,3 +94,20 @@ filterByMaybe_ ::
 filterByMaybe_ Nothing filterApp = filter_ $ \_ -> val_ True
 filterByMaybe_ (Just freq) filterApp = filterBy_ freq filterApp
 
+filterByList_ ::
+  ( BeamSqlBackend be,
+    Projectible be a,
+    ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
+    HasSqlEqualityCheck be typ,
+    BeamBackendSupportsValueSyntaxFor be typ
+  ) =>
+  [Filter tag typ] ->
+  (a -> FilteringApp be s filterspec) ->
+  Q be db s' a ->
+  Q be db s' a
+filterByList_ filters filterApp =
+  -- TODO: this way query allways has `WHERE true` or `WHERE ... AND (true)`
+  -- needs to be fixed
+  filter_ $ \table -> foldr (go table) (val_ True) filters
+  where
+    go table a b = composeBeamFilter (filterApp table) a &&. b
