@@ -105,6 +105,18 @@ data Filter (tag :: Symbol) a = Filter
 
 data FilterableBy' (tag :: Symbol) a
 
+
+type family GenerateFilterQueryParams (filterName :: Symbol) typ where
+  GenerateFilterQueryParams filterName typ =
+    '[ QueryParam (AppendSymbol filterName "_eq") typ,
+       QueryParam (AppendSymbol filterName "_lt") typ,
+       QueryParam (AppendSymbol filterName "_gt") typ,
+       QueryParam (AppendSymbol filterName "_neq") typ,
+       QueryParam (AppendSymbol filterName "_nlt") typ,
+       QueryParam (AppendSymbol filterName "_ngt") typ,
+       QueryParam (AppendSymbol filterName "_gte") typ,
+       QueryParam (AppendSymbol filterName "_lte") typ
+     ]
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
