@@ -80,7 +80,17 @@ filterBy_ ::
   Q be db s' a
 filterBy_ freq filterApp = filter_ $ \a -> composeBeamFilter (filterApp a) freq
 
+filterByMaybe_ ::
+  ( BeamSqlBackend be,
+    Projectible be a,
+    ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
+    HasSqlEqualityCheck be typ,
+    BeamBackendSupportsValueSyntaxFor be typ
+  ) =>
+  Maybe (Filter tag typ) ->
+  (a -> FilteringApp be s filterspec) ->
+  Q be db s' a ->
+  Q be db s' a
 filterByMaybe_ Nothing filterApp = filter_ $ \_ -> val_ True
 filterByMaybe_ (Just freq) filterApp = filterBy_ freq filterApp
 
--- INFO: `. filter_ (\u -> val_ True)` === unfiltered query
