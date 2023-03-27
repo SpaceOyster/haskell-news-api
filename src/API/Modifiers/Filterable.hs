@@ -30,6 +30,7 @@ import API.Modifiers.Internal.Tagged
     (:?),
   )
 import Control.Applicative ((<|>))
+import Data.Foldable (toList)
 import Data.Kind (Type)
 import qualified Data.Text.Extended as T
 import GHC.Base (Constraint, Symbol)
@@ -141,11 +142,12 @@ instance
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
     Ord a,
     KnownSymbol tag,
+    GeneratedTagsAreKnownSymbol tag,
     FromHttpApiData a
   ) =>
   HasServer (FilterableBy' tag a :> api) context
   where
-  type ServerT (FilterableBy' tag a :> api) m = Maybe (Filter tag a) -> ServerT api m
+  type ServerT (FilterableBy' tag a :> api) m = [Filter tag a] -> ServerT api m
 
   hoistServerWithContext ::
     Proxy (FilterableBy' tag a :> api) ->
@@ -164,7 +166,28 @@ instance
   route Proxy context delayed =
     route api context (withQParam <$> delayed)
     where
-      api = Proxy :: Proxy (QueryParam tag a :> api)
-      withQParam :: (Maybe (Filter tag a) -> x) -> (Maybe a -> x)
-      withQParam f Nothing = f Nothing
-      withQParam f (Just a) = f $ Just (Filter Equals a)
+      api = Proxy :: Proxy (GenerateFilterAPIType tag a api)
+      withQParam ::
+        ([Filter tag a] -> x) ->
+        ( Maybe a ->
+          Maybe a ->
+          Maybe a ->
+          Maybe a ->
+          Maybe a ->
+          Maybe a ->
+          Maybe a ->
+          Maybe a ->
+          x
+        )
+      withQParam f mEq mLt mGt mNeq mNlt mNgt mGte mLte =
+        f $
+          toList
+            =<< [ Filter Equals <$> mEq,
+                  Filter LessThan <$> mLt,
+                  Filter GreaterThan <$> mGt,
+                  Filter (Not Equals) <$> mNeq,
+                  Filter (Not LessThan) <$> mNlt,
+                  Filter (Not GreaterThan) <$> mNgt,
+                  Filter (Not LessThan) <$> mGte,
+                  Filter (Not GreaterThan) <$> mLte
+                ]
