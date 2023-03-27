@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -92,3 +93,9 @@ instance
   ReifySymbolsList (a ': as)
   where
   reifySymbolsList _ = symbolVal (Proxy @a) : reifySymbolsList (Proxy @as)
+
+type Foldr :: (a -> a -> b) -> a -> [a] -> b
+type family Foldr f a0 as where
+  Foldr f a0 '[] = a0
+  Foldr f a0 (a ': as) = a `f` Foldr f a0 as
+
