@@ -104,3 +104,8 @@ type family Foldr f a0 as where
   Foldr f a0 '[] = a0
   Foldr f a0 (a ': as) = a `f` Foldr f a0 as
 
+type Fmap :: (a -> b) -> [a] -> [b]
+type family Fmap f as where
+  Fmap _ '[] = '[]
+  Fmap f (a ': as) = f a ': Fmap f as
+
