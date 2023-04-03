@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -20,7 +21,9 @@ module API.Modifiers.Filterable
 where
 
 import API.Modifiers.Internal.PolyKinds
-  ( Foldr,
+  ( ConcatConstraints,
+    Fmap,
+    Foldr,
     HasToBeInList,
     ReifySymbolsList (..),
     Replicate,
@@ -108,31 +111,29 @@ data Filter (tag :: Symbol) a = Filter
 
 data FilterableBy' (tag :: Symbol) a
 
+type PredicateSymbols :: [Symbol]
+type PredicateSymbols = ["eq", "lt", "gt", "neq", "nlt", "ngt", "gte", "lte"]
+
+type family PrependTagToSuffixes (tag :: Symbol) (suffixes :: [Symbol]) :: [Symbol] where
+  PrependTagToSuffixes tag '[] = '[]
+  PrependTagToSuffixes tag (a ': as) =
+    AppendSymbol tag (AppendSymbol "_" a) ': PrependTagToSuffixes tag as
+
+type family GenerateFilterTags (tag :: Symbol) :: [Symbol] where
+  GenerateFilterTags tag = PrependTagToSuffixes tag PredicateSymbols
 
 type family GeneratedTagsAreKnownSymbol (tag :: Symbol) :: Constraint where
   GeneratedTagsAreKnownSymbol tag =
-    ( KnownSymbol (AppendSymbol tag "_eq"),
-      KnownSymbol (AppendSymbol tag "_lt"),
-      KnownSymbol (AppendSymbol tag "_gt"),
-      KnownSymbol (AppendSymbol tag "_neq"),
-      KnownSymbol (AppendSymbol tag "_nlt"),
-      KnownSymbol (AppendSymbol tag "_ngt"),
-      KnownSymbol (AppendSymbol tag "_gte"),
-      KnownSymbol (AppendSymbol tag "_lte")
-    ) ::
-      Constraint
+    ConcatConstraints (Fmap KnownSymbol (GenerateFilterTags tag))
+
+type family ApplyQueryParam (filterTags :: [Symbol]) typ where
+  ApplyQueryParam '[] typ = '[]
+  ApplyQueryParam (a ': as) typ =
+    QueryParam a typ ': ApplyQueryParam as typ
 
 type family GenerateFilterQueryParams (filterName :: Symbol) typ where
   GenerateFilterQueryParams filterName typ =
-    '[ QueryParam (AppendSymbol filterName "_eq") typ,
-       QueryParam (AppendSymbol filterName "_lt") typ,
-       QueryParam (AppendSymbol filterName "_gt") typ,
-       QueryParam (AppendSymbol filterName "_neq") typ,
-       QueryParam (AppendSymbol filterName "_nlt") typ,
-       QueryParam (AppendSymbol filterName "_ngt") typ,
-       QueryParam (AppendSymbol filterName "_gte") typ,
-       QueryParam (AppendSymbol filterName "_lte") typ
-     ]
+    ApplyQueryParam (GenerateFilterTags filterName) typ
 
 type family GenerateFilterAPIType (filterName :: Symbol) typ api where
   GenerateFilterAPIType filterName typ api =
