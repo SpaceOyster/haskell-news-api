@@ -94,6 +94,11 @@ instance
   where
   reifySymbolsList _ = symbolVal (Proxy @a) : reifySymbolsList (Proxy @as)
 
+type ConcatConstraints :: [Constraint] -> Constraint
+type family ConcatConstraints a where
+  ConcatConstraints '[] = (() :: Constraint)
+  ConcatConstraints (a ': as) = (a, ConcatConstraints as) :: Constraint
+
 type Foldr :: (a -> a -> b) -> a -> [a] -> b
 type family Foldr f a0 as where
   Foldr f a0 '[] = a0
