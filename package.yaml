@@ -39,6 +39,7 @@ dependencies:
 - cryptonite
 - random
 - parsec
+- tagged
 
 library:
   source-dirs: src
