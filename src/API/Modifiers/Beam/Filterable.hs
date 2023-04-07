@@ -9,7 +9,6 @@ module API.Modifiers.Beam.Filterable where
 import API.Modifiers.Beam.Internal
 import API.Modifiers.Filterable
 import API.Modifiers.Internal.PolyKinds
-import API.Modifiers.Internal.Tagged
 import Data.Typeable (Proxy (..))
 import Database.Beam.Backend.SQL
 import Database.Beam.Backend.SQL.AST
