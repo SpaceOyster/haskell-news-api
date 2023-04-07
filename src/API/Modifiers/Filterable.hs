@@ -1,8 +1,11 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
@@ -16,7 +19,6 @@ module API.Modifiers.Filterable
     Tagged (..),
     Filter (..),
     Predicate (..),
-    (:?),
   )
 where
 
@@ -28,16 +30,15 @@ import API.Modifiers.Internal.PolyKinds
     ReifySymbolsList (..),
     Replicate,
   )
-import API.Modifiers.Internal.Tagged
-  ( Tagged (..),
-    (:?),
-  )
 import Control.Applicative ((<|>))
+import Data.Data
 import Data.Foldable (toList)
 import Data.Kind (Type)
+import Data.Tagged
 import qualified Data.Text.Extended as T
-import GHC.Base (Constraint, Symbol)
-import GHC.TypeLits (AppendSymbol, KnownSymbol)
+import GHC.Base
+import GHC.Generics
+import GHC.TypeLits
 import Servant
   ( Context,
     ErrorFormatters,
@@ -47,6 +48,7 @@ import Servant
     Proxy (..),
     QueryParam (..),
     Server,
+    type (:<|>),
     type (:>),
   )
 import Servant.Server.Internal.Delayed (Delayed)
@@ -56,11 +58,26 @@ import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router (Router)
 import qualified Text.Parsec as Parsec
 
-data FilterableBy (a :: [Tagged Type])
+type FilterableBy :: forall s t. [Type] -> Type
+data FilterableBy a
+  deriving (Data, Typeable, Generic)
+
+
+type family ValidFilterSpec a :: Constraint where
+  ValidFilterSpec '[] = () :: Constraint
+  ValidFilterSpec (Tagged s t ': as) = ValidFilterSpec as
+  ValidFilterSpec (a ': as) =
+    TypeError
+      ( 'Text "Filter spec list item '"
+          ':<>: 'ShowType a
+          ':<>: 'Text "' is illegal."
+          ':$$: 'Text "Filter spec list should contain only Data.Tagged.Tagged types."
+      )
 
 instance
   ( HasServer api context,
-    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
+    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
+    ValidFilterSpec available
   ) =>
   HasServer (FilterableBy available :> api) context
   where
