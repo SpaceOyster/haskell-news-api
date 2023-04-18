@@ -9,6 +9,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -30,11 +31,14 @@ import API.Modifiers.Internal.PolyKinds
     ReifySymbolsList (..),
     Replicate,
   )
+import API.Modifiers.Internal.Tagged
+  ( Tagged (..),
+    (:?),
+  )
 import Control.Applicative ((<|>))
 import Data.Data
 import Data.Foldable (toList)
 import Data.Kind (Type)
-import Data.Tagged
 import qualified Data.Text.Extended as T
 import GHC.Base
 import GHC.Generics
@@ -58,9 +62,7 @@ import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router (Router)
 import qualified Text.Parsec as Parsec
 
-type FilterableBy :: forall s t. [Type] -> Type
-data FilterableBy a
-  deriving (Data, Typeable, Generic)
+data FilterableBy (a :: [Tagged Type])
 
 
 type family ValidFilterSpec a :: Constraint where
@@ -73,33 +75,38 @@ type family ValidFilterSpec a :: Constraint where
           ':<>: 'Text "' is illegal."
           ':$$: 'Text "Filter spec list should contain only Data.Tagged.Tagged types."
       )
+instance
+  ( HasServer api context,
+    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
+  ) =>
+  HasServer (FilterableBy '[] :> api) context
+  where
+  type ServerT (FilterableBy '[] :> api) m = ServerT api m
+  hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy api)
+  route Proxy = route (Proxy @api)
 
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
-    ValidFilterSpec available
+    KnownSymbol ta,
+    GeneratedTagsAreKnownSymbol ta,
+    HasServer (FilterableBy' ta a :> api) context,
+    HasServer (FilterableBy as :> api) context,
+    FromHttpApiData a,
+    Ord a
   ) =>
-  HasServer (FilterableBy available :> api) context
+  HasServer (FilterableBy ('Tagged ta a ': as) :> api) context
   where
-  type ServerT (FilterableBy available :> api) m = ServerT api m
+  type
+    ServerT (FilterableBy ('Tagged ta a ': as) :> api) m =
+      [Filter ta a] -> ServerT (FilterableBy as :> api) m
 
-  hoistServerWithContext ::
-    Proxy (FilterableBy available :> api) ->
-    Proxy context ->
-    (forall x. m x -> n x) ->
-    ServerT (FilterableBy available :> api) m ->
-    ServerT (FilterableBy available :> api) n
   hoistServerWithContext _ pc nt s =
-    hoistServerWithContext (Proxy :: Proxy api) pc nt s
+    hoistServerWithContext (Proxy :: Proxy (FilterableBy as :> api)) pc nt . s
 
-  route ::
-    Proxy (FilterableBy available :> api) ->
-    Context context ->
-    Delayed env (Server (FilterableBy available :> api)) ->
-    Router env
-  route Proxy context delayed = route api context delayed
+  route Proxy = route api
     where
-      api = Proxy :: Proxy api
+      api = Proxy :: Proxy (FilterableBy' ta a :> FilterableBy as :> api)
 
 data Predicate
   = Equals
