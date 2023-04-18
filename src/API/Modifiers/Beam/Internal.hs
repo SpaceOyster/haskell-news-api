@@ -12,11 +12,8 @@
 
 module API.Modifiers.Beam.Internal where
 
-import API.Modifiers.Internal.PolyKinds
--- import API.Modifiers.Internal.Tagged
-
+import API.Modifiers.Internal
 import qualified Data.CaseInsensitive as CI
-import Data.Tagged
 import qualified Data.Text.Extended as T
 import Data.Type.Bool (If)
 import Data.Typeable (Proxy (..))
@@ -31,9 +28,9 @@ newtype TaggedColumn (tag :: Symbol) be s a = TaggedCol
 
 data ColumnList be s a where
   ColNil :: ColumnList be s '[]
-  ColCons :: TaggedColumn tag be s a -> ColumnList be s as -> ColumnList be s (Tagged tag a ': as)
+  ColCons :: TaggedColumn tag be s a -> ColumnList be s as -> ColumnList be s ('Tagged tag a ': as)
 
-(.:.) :: TaggedColumn tag be s a -> ColumnList be s as -> ColumnList be s (Tagged tag a : as)
+(.:.) :: TaggedColumn tag be s a -> ColumnList be s as -> ColumnList be s ('Tagged tag a : as)
 (.:.) = ColCons
 
 infixr 3 .:.
@@ -50,7 +47,7 @@ instance
   ( KnownSymbol tag,
     LookupColumn' be s (ColumnList be s as) typ
   ) =>
-  LookupColumn' be s (ColumnList be s (Tagged tag typ ': as)) typ
+  LookupColumn' be s (ColumnList be s ('Tagged tag typ ': as)) typ
   where
   lookupColumn' (TaggedCol c `ColCons` as) name =
     if symbolCIText (Proxy @tag) == CI.mk name
@@ -67,7 +64,7 @@ instance
   ( KnownSymbol tag,
     LookupColumn be s (ColumnList be s as)
   ) =>
-  LookupColumn be s (ColumnList be s (Tagged tag a ': as))
+  LookupColumn be s (ColumnList be s ('Tagged tag a ': as))
   where
   lookupColumn (TaggedCol c `ColCons` as) name =
     if symbolCIText (Proxy @tag) == CI.mk name
@@ -76,7 +73,7 @@ instance
 
 type family GetColumnTags a :: [Symbol] where
   GetColumnTags (ColumnList be s '[]) = '[]
-  GetColumnTags (ColumnList be s (Tagged tag a ': as)) =
+  GetColumnTags (ColumnList be s ('Tagged tag a ': as)) =
     tag ': GetColumnTags (ColumnList be s as)
 
 type family ColumnIsPresent (a :: Symbol) as :: Bool where
@@ -105,17 +102,17 @@ class ObtainColumn' be s a (tag :: Symbol) typ | a tag -> be s where
 instance
   {-# OVERLAPPABLE #-}
   forall be s a as typ (tag :: Symbol) (tag' :: Symbol).
-  ( HasToBeProvided tag (ColumnList be s (Tagged tag' a ': as)),
+  ( HasToBeProvided tag (ColumnList be s ('Tagged tag' a ': as)),
     ObtainColumn' be s (ColumnList be s as) tag typ
   ) =>
-  ObtainColumn' be s (ColumnList be s (Tagged tag' a ': as)) tag typ
+  ObtainColumn' be s (ColumnList be s ('Tagged tag' a ': as)) tag typ
   where
   obtainColumn' (TaggedCol _c `ColCons` as) = obtainColumn' as
 
 instance
   {-# OVERLAPPING #-}
-  (HasToBeProvided tag (ColumnList be s (Tagged tag a ': as))) =>
-  ObtainColumn' be s (ColumnList be s (Tagged tag a ': as)) tag a
+  (HasToBeProvided tag (ColumnList be s ('Tagged tag a ': as))) =>
+  ObtainColumn' be s (ColumnList be s ('Tagged tag a ': as)) tag a
   where
   obtainColumn' (TaggedCol c `ColCons` _as) _ _ = c
 
@@ -125,17 +122,17 @@ class ObtainColumn be s a (tag :: Symbol) | a tag -> be s where
 instance
   {-# OVERLAPPABLE #-}
   forall be s a as (tag :: Symbol) (tag' :: Symbol).
-  ( HasToBeProvided tag (ColumnList be s (Tagged tag' a ': as)),
+  ( HasToBeProvided tag (ColumnList be s ('Tagged tag' a ': as)),
     ObtainColumn be s (ColumnList be s as) tag
   ) =>
-  ObtainColumn be s (ColumnList be s (Tagged tag' a ': as)) tag
+  ObtainColumn be s (ColumnList be s ('Tagged tag' a ': as)) tag
   where
   obtainColumn (TaggedCol _c `ColCons` as) = obtainColumn as
 
 instance
   {-# OVERLAPPING #-}
-  (HasToBeProvided tag (ColumnList be s (Tagged tag a ': as))) =>
-  ObtainColumn be s (ColumnList be s (Tagged tag a ': as)) tag
+  (HasToBeProvided tag (ColumnList be s ('Tagged tag a ': as))) =>
+  ObtainColumn be s (ColumnList be s ('Tagged tag a ': as)) tag
   where
   obtainColumn (TaggedCol c `ColCons` _as) _ =
     (coerce :: QExpr be s a -> QExpr be s Void) c

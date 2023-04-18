@@ -13,7 +13,6 @@
 module API.Modifiers.Internal.PolyKinds where
 
 import qualified Data.CaseInsensitive as CI
-import Data.Tagged
 import qualified Data.Text.Extended as T
 import Data.Type.Bool (If, type (&&))
 import Data.Typeable (Proxy (..))
@@ -74,9 +73,6 @@ instance ReifyBool 'True where
 instance ReifyBool 'False where
   reifyBool _ = False
 
-type family ListOfTags (a :: [Type]) :: [Symbol] where
-  ListOfTags '[] = '[]
-  ListOfTags (Tagged tag a ': as) = tag ': ListOfTags as
 
 class ValidNamesList (available :: [Symbol]) where
   isNameValid :: T.Text -> Bool

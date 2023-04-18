@@ -80,7 +80,6 @@ library
     , random
     , servant
     , servant-server
-    , tagged
     , text
     , time
     , wai
@@ -111,7 +110,6 @@ executable haskell-news-api-exe
     , random
     , servant
     , servant-server
-    , tagged
     , text
     , time
     , wai
@@ -143,7 +141,6 @@ test-suite haskell-news-api-test
     , random
     , servant
     , servant-server
-    , tagged
     , text
     , time
     , wai
