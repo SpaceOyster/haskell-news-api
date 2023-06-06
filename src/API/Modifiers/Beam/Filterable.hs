@@ -20,8 +20,8 @@ predicateToSql ::
   (SqlOrd expr a, SqlEq expr a) =>
   Predicate ->
   (a -> a -> expr Bool)
-predicateToSql pred =
-  case pred of
+predicateToSql predicate =
+  case predicate of
     Equals -> (==.)
     LessThan -> (<.)
     GreaterThan -> (>.)
@@ -60,10 +60,10 @@ composeBeamFilter ::
   FilteringApp be s filterspec ->
   Filter tag typ ->
   QExpr be s' Bool
-composeBeamFilter (FilteringApp colList) (Filter pred a) =
-  column `predicate` as_ @typ (val_ a)
+composeBeamFilter (FilteringApp colList) (Filter predicate a) =
+  column `predicateSQL` as_ @typ (val_ a)
   where
-    predicate = predicateToSql pred
+    predicateSQL = predicateToSql predicate
     column = obtainColumn' colList (Proxy @tag) (Proxy @typ)
 
 filterBy_ ::
@@ -90,7 +90,7 @@ filterByMaybe_ ::
   (a -> FilteringApp be s filterspec) ->
   Q be db s' a ->
   Q be db s' a
-filterByMaybe_ Nothing filterApp = filter_ $ \_ -> val_ True
+filterByMaybe_ Nothing _filterApp = filter_ $ \_ -> val_ True
 filterByMaybe_ (Just freq) filterApp = filterBy_ freq filterApp
 
 filterByList_ ::
