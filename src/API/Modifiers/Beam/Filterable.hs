@@ -104,9 +104,8 @@ filterByList_ ::
   (a -> FilteringApp be s filterspec) ->
   Q be db s' a ->
   Q be db s' a
-filterByList_ filters filterApp =
-  -- TODO: this way query allways has `WHERE true` or `WHERE ... AND (true)`
-  -- needs to be fixed
-  filter_ $ \table -> foldr (go table) (val_ True) filters
+filterByList_ _filters@[] _filterApp = id
+filterByList_ filters@(_ : _) filterApp =
+  filter_ $ \table -> foldr1 (&&.) $ fmap (go table) filters
   where
-    go table a b = composeBeamFilter (filterApp table) a &&. b
+    go table a = composeBeamFilter (filterApp table) a
