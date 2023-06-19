@@ -75,6 +75,7 @@ library
     , containers
     , cryptonite
     , exceptions
+    , http-types
     , mtl
     , parsec
     , random
@@ -105,6 +106,7 @@ executable haskell-news-api-exe
     , cryptonite
     , exceptions
     , haskell-news-api
+    , http-types
     , mtl
     , parsec
     , random
@@ -136,6 +138,7 @@ test-suite haskell-news-api-test
     , cryptonite
     , exceptions
     , haskell-news-api
+    , http-types
     , mtl
     , parsec
     , random

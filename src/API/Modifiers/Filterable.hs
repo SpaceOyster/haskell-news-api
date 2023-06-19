@@ -1,9 +1,9 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
@@ -16,46 +16,39 @@
 
 module API.Modifiers.Filterable
   ( FilterableBy,
-    FilterableBy',
+    FilterableBySingle,
+    FilteringRequest (..),
     Tagged (..),
     Filter (..),
     Predicate (..),
   )
 where
 
-import API.Modifiers.Internal.PolyKinds
-  ( ConcatConstraints,
-    Fmap,
-    Foldr,
-    HasToBeInList,
-    ReifySymbolsList (..),
-    Replicate,
-  )
 import API.Modifiers.Internal.Tagged
   ( Tagged (..),
-    (:?),
   )
 import Control.Applicative ((<|>))
 import Data.Data
-import Data.Foldable (toList)
 import Data.Kind (Type)
 import qualified Data.Text.Extended as T
-import GHC.Base
-import GHC.Generics
+import qualified Data.Text.Lazy as T (fromStrict)
+import qualified Data.Text.Lazy.Encoding as T (encodeUtf8)
 import GHC.TypeLits
+import Network.HTTP.Types.URI (QueryText, queryToQueryText)
+import Network.Wai (Request (queryString))
 import Servant
   ( Context,
     ErrorFormatters,
     FromHttpApiData (..),
     HasContextEntry,
     HasServer (..),
-    Proxy (..),
-    QueryParam (..),
     Server,
-    type (:<|>),
+    ServerError (errBody),
+    err400,
     type (:>),
   )
-import Servant.Server.Internal.Delayed (Delayed)
+import Servant.Server.Internal.Delayed (Delayed, addParameterCheck)
+import Servant.Server.Internal.DelayedIO (DelayedIO, delayedFailFatal, withRequest)
 import Servant.Server.Internal.ErrorFormatter
   ( MkContextWithErrorFormatter,
   )
@@ -89,8 +82,7 @@ instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
     KnownSymbol ta,
-    GeneratedTagsAreKnownSymbol ta,
-    HasServer (FilterableBy' ta a :> api) context,
+    HasServer (FilterableBySingle ta a :> api) context,
     HasServer (FilterableBy as :> api) context,
     FromHttpApiData a,
     Ord a
@@ -106,7 +98,7 @@ instance
 
   route Proxy = route api
     where
-      api = Proxy :: Proxy (FilterableBy' ta a :> FilterableBy as :> api)
+      api = Proxy :: Proxy (FilterableBySingle ta a :> FilterableBy as :> api)
 
 data Predicate
   = Equals
@@ -126,137 +118,114 @@ predicateParser =
       (Parsec.string "ngt" <|> Parsec.string "lte") >> pure (Not GreaterThan)
     ]
 
+class FilterValue a where
+  parseFilterValue :: T.Text -> Either T.Text a
+
+instance (FromHttpApiData a) => FilterValue a where
+  parseFilterValue = parseQueryParam
+
+filterQueryKeyParser ::
+  forall tag a st.
+  (KnownSymbol tag) =>
+  Parsec.Parsec T.Text st (a -> Filter tag a)
+filterQueryKeyParser = do
+  let key = symbolVal (Proxy @tag)
+  predicate <- Parsec.string key >> Parsec.char '_' >> predicateParser
+  pure $ Filter predicate
+
+doParseFilterQueryKey ::
+  forall tag a.
+  (KnownSymbol tag) =>
+  T.Text ->
+  Either T.Text (a -> Filter tag a)
+doParseFilterQueryKey keyT =
+  case Parsec.runParser (filterQueryKeyParser @tag @a) () (T.unpack keyT) keyT of
+    Left _ -> Left gotWrongMessage
+    Right p -> Right p
+  where
+    gotWrongMessage = T.pack msg
+    expectedKey = symbolVal (Proxy @tag)
+    msg =
+      concat
+        [ "Expected \"",
+          expectedKey,
+          "_<predicate>\" but got: ",
+          show keyT,
+          "."
+        ]
+
+parseQueryText ::
+  forall tag a.
+  (KnownSymbol tag, FilterValue a) =>
+  QueryText ->
+  Either T.Text [Filter tag a]
+parseQueryText qt = sequence $ foldr go [] qt
+  where
+    gotEmptyValueFor key =
+      T.pack $ concat ["Got QueryFlag, the value of ", show key, " is empty."]
+    doParseValue :: (FilterValue a) => T.Text -> Maybe T.Text -> Either T.Text a
+    doParseValue key Nothing = Left $ gotEmptyValueFor key
+    doParseValue _ (Just val) = parseFilterValue val
+    go :: (T.Text, Maybe T.Text) -> [Either T.Text (Filter tag a)] -> [Either T.Text (Filter tag a)]
+    go (key, valM) b = case doParseFilterQueryKey key of
+      Left _ -> b
+      rPredicate -> (rPredicate <*> doParseValue key valM) : b
 
 data Filter (tag :: Symbol) a = Filter
   { getPredicate :: Predicate,
     getValue :: a
   }
 
+instance (Show a, KnownSymbol tag, Typeable a) => Show (Filter tag a) where
+  show (Filter p v) =
+    concat
+      [ "(Filter { getPredicate = ",
+        show p,
+        ", getValue = ",
+        show v,
+        "} :: ",
+        show $ typeRep $ Proxy @(Filter tag a),
+        ")"
+      ]
 
-data FilterableBy' (tag :: Symbol) a
+data FilterableBySingle (tag :: Symbol) a
 
--- | Used in generating allowed query params for filters.
--- >>> ../user?registration-date_lt="01-01-2001"
 type PredicateSymbols :: [Symbol]
 type PredicateSymbols = ["eq", "lt", "gt", "neq", "nlt", "ngt", "gte", "lte"]
 
--- | Generates list of Symbols by prepending specified tag to each Symbol of
--- provided list, separating them with "_" symbol.
--- >>> :k! PrependTagToSuffixes "name" ["1", "2"]
--- PrependTagToSuffixes "name" ["1", "2"] :: [Symbol]
--- = '["name_1", "name_2"]
-type family PrependTagToSuffixes (tag :: Symbol) (suffixes :: [Symbol]) :: [Symbol] where
-  PrependTagToSuffixes tag '[] = '[]
-  PrependTagToSuffixes tag (a ': as) =
-    AppendSymbol tag (AppendSymbol "_" a) ': PrependTagToSuffixes tag as
-
--- | Generates list of query param names for a 'filter' by prependig it's name
--- to each of PredicateSymbols sepparating them with "_" symbol.
--- >>> :k! GenerateFilterTags "filter"
--- GenerateFilterTags "filter" :: [Symbol]
--- = '["filter_eq", "filter_lt", "filter_gt", "filter_neq",
---     "filter_nlt", "filter_ngt", "filter_gte", "filter_lte"]
-type family GenerateFilterTags (tag :: Symbol) :: [Symbol] where
-  GenerateFilterTags tag = PrependTagToSuffixes tag PredicateSymbols
-
--- | Generates a list of 'KnownSymbol' Constraint for each Symbol
--- of 'GenerateFilterTags tag' list and concatenates them.
--- >>> :k! GeneratedTagsAreKnownSymbol "filter"
--- GeneratedTagsAreKnownSymbol "filter" :: Constraint
--- = (KnownSymbol "filter_eq",
---    (KnownSymbol "filter_lt",
---    ...
---         (KnownSymbol "filter_gte",
---          (KnownSymbol "filter_lte", () :: Constraint))))))))
-type family GeneratedTagsAreKnownSymbol (tag :: Symbol) :: Constraint where
-  GeneratedTagsAreKnownSymbol tag =
-    ConcatConstraints (Fmap KnownSymbol (GenerateFilterTags tag))
-
--- | Generates a list of 'QueryParam' for list of Symbols and specified type.
--- >>> :k! ApplyQueryParam ["one", "two"] Integer
--- ApplyQueryParam ["one", "two"] Integer :: [*]
--- = '[QueryParam "one" Integer, QueryParam "two" Integer]
-type family ApplyQueryParam (filterTags :: [Symbol]) typ where
-  ApplyQueryParam '[] typ = '[]
-  ApplyQueryParam (a ': as) typ =
-    QueryParam a typ ': ApplyQueryParam as typ
-
--- | Generates a list of 'QueryParam' for specified 'filterName' and type.
--- >>> :k! GenerateFilterQueryParams "created-at" UTCTime
--- GenerateFilterQueryParams "created-at" UTCTime :: [*]
--- = '[QueryParam "created-at_eq" UTCTime,
---     QueryParam "created-at_lt" UTCTime,
---     ...
---     QueryParam "created-at_gte" UTCTime,
---     QueryParam "created-at_lte" UTCTime]
-type family GenerateFilterQueryParams (filterName :: Symbol) typ where
-  GenerateFilterQueryParams filterName typ =
-    ApplyQueryParam (GenerateFilterTags filterName) typ
-
--- | Generates 'Servant' API type by generated a list of 'QueryParam',
--- inteerspersing them with '(:>)' operator and appending ':> api' at the end.
--- >>> :k! GenerateFilterAPIType "registered-at" UTCTime (Get '[JSON] User)
--- GenerateFilterAPIType "registered-at" UTCTime (Get '[JSON] User) :: *
--- = QueryParam' '[Optional, Strict] "registered-at_eq" UTCTime
---   :> (QueryParam' '[Optional, Strict] "registered-at_lt" UTCTime
---       :> (QueryParam' '[Optional, Strict] "registered-at_gt" UTCTime
---       ...
---         :> (QueryParam' '[Optional, Strict] "registered-at_lte" UTCTime
---           :> Verb 'GET 200 '[JSON] User)))))))
-type family GenerateFilterAPIType (filterName :: Symbol) typ api where
-  GenerateFilterAPIType filterName typ api =
-    Foldr (:>) api (GenerateFilterQueryParams filterName typ)
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
     Ord a,
     KnownSymbol tag,
-    GeneratedTagsAreKnownSymbol tag,
     FromHttpApiData a
   ) =>
-  HasServer (FilterableBy' tag a :> api) context
+  HasServer (FilterableBySingle tag a :> api) context
   where
-  type ServerT (FilterableBy' tag a :> api) m = [Filter tag a] -> ServerT api m
+  type ServerT (FilterableBySingle tag a :> api) m = [Filter tag a] -> ServerT api m
 
   hoistServerWithContext ::
-    Proxy (FilterableBy' tag a :> api) ->
+    Proxy (FilterableBySingle tag a :> api) ->
     Proxy context ->
     (forall x. m x -> n x) ->
-    ServerT (FilterableBy' tag a :> api) m ->
-    ServerT (FilterableBy' tag a :> api) n
+    ServerT (FilterableBySingle tag a :> api) m ->
+    ServerT (FilterableBySingle tag a :> api) n
   hoistServerWithContext _ pc nt s =
     hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
   route ::
-    Proxy (FilterableBy' tag a :> api) ->
+    Proxy (FilterableBySingle tag a :> api) ->
     Context context ->
-    Delayed env (Server (FilterableBy' tag a :> api)) ->
+    Delayed env (Server (FilterableBySingle tag a :> api)) ->
     Router env
   route Proxy context delayed =
-    route api context (withQParam <$> delayed)
+    route api context $ addParameterCheck delayed (withRequest go)
     where
-      api = Proxy :: Proxy (GenerateFilterAPIType tag a api)
-      withQParam ::
-        ([Filter tag a] -> x) ->
-        ( Maybe a ->
-          Maybe a ->
-          Maybe a ->
-          Maybe a ->
-          Maybe a ->
-          Maybe a ->
-          Maybe a ->
-          Maybe a ->
-          x
-        )
-      withQParam f mEq mLt mGt mNeq mNlt mNgt mGte mLte =
-        f $
-          toList
-            =<< [ Filter Equals <$> mEq,
-                  Filter LessThan <$> mLt,
-                  Filter GreaterThan <$> mGt,
-                  Filter (Not Equals) <$> mNeq,
-                  Filter (Not LessThan) <$> mNlt,
-                  Filter (Not GreaterThan) <$> mNgt,
-                  Filter (Not LessThan) <$> mGte,
-                  Filter (Not GreaterThan) <$> mLte
-                ]
+      queryText :: Request -> QueryText
+      queryText = queryToQueryText . queryString
+      go :: Request -> DelayedIO [Filter tag a]
+      go req = eitherToDelayed $ parseQueryText $ queryText req
+      api = Proxy :: Proxy api
+      eitherToDelayed = \case
+        Left err -> delayedFailFatal err400 {errBody = T.encodeUtf8 $ T.fromStrict err}
+        Right x -> pure x

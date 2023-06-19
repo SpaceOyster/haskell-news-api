@@ -39,6 +39,7 @@ dependencies:
 - cryptonite
 - random
 - parsec
+- http-types
 
 library:
   source-dirs: src
