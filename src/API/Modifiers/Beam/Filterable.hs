@@ -1,8 +1,14 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module API.Modifiers.Beam.Filterable where
 
@@ -15,6 +21,7 @@ import Database.Beam.Backend.SQL.AST
 import Database.Beam.Backend.SQL.SQL92
 import Database.Beam.Query
 import Database.Beam.Query.Internal
+import GHC.TypeLits
 
 predicateToSql ::
   (SqlOrd expr a, SqlEq expr a) =>
@@ -94,6 +101,7 @@ filterByMaybe_ Nothing _filterApp = filter_ $ \_ -> val_ True
 filterByMaybe_ (Just freq) filterApp = filterBy_ freq filterApp
 
 filterByList_ ::
+  forall a tag typ be db s s' filterspec.
   ( BeamSqlBackend be,
     Projectible be a,
     ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
@@ -108,4 +116,30 @@ filterByList_ _filters@[] _filterApp = id
 filterByList_ filters@(_ : _) filterApp =
   filter_ $ \table -> foldr1 (&&.) $ fmap (go table) filters
   where
-    go table a = composeBeamFilter (filterApp table) a
+    go :: a -> Filter tag typ -> QExpr be s' Bool
+    go table = composeBeamFilter (filterApp table)
+
+class FilteringRequestBeam be s s' filterspec req where
+  filterByRequest_ ::
+    ( BeamSqlBackend be,
+      Projectible be a
+    ) =>
+    req ->
+    (a -> FilteringApp be s filterspec) ->
+    Q be db s' a ->
+    Q be db s' a
+
+instance FilteringRequestBeam be s s' filterspec (FilteringRequest '[]) where
+  filterByRequest_ _ _ = id
+
+instance
+  ( KnownSymbol tag,
+    ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
+    HasSqlEqualityCheck be typ,
+    BeamBackendSupportsValueSyntaxFor be typ,
+    FilteringRequestBeam be s s' filterspec (FilteringRequest as)
+  ) =>
+  FilteringRequestBeam be s s' filterspec (FilteringRequest ('Tagged tag typ ': as))
+  where
+  filterByRequest_ (filters `FiltReqCons` fs) filterApp =
+    filterByList_ filters filterApp . filterByRequest_ fs filterApp

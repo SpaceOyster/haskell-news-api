@@ -1,14 +1,11 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -16,7 +13,6 @@
 
 module API.Modifiers.Filterable
   ( FilterableBy,
-    FilterableBySingle,
     FilteringRequest (..),
     Tagged (..),
     Filter (..),
@@ -28,6 +24,8 @@ import API.Modifiers.Internal.Tagged
   ( Tagged (..),
   )
 import Control.Applicative ((<|>))
+import Data.CaseInsensitive (CI)
+import Data.CaseInsensitive as CI (mk)
 import Data.Data
 import Data.Kind (Type)
 import qualified Data.Text.Extended as T
@@ -55,50 +53,11 @@ import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router (Router)
 import qualified Text.Parsec as Parsec
 
-data FilterableBy (a :: [Tagged Type])
+data FilteringRequest a where
+  FiltReqNil :: FilteringRequest '[]
+  FiltReqCons :: [Filter name typ] -> FilteringRequest as -> FilteringRequest ('Tagged name typ ': as)
 
-
-type family ValidFilterSpec a :: Constraint where
-  ValidFilterSpec '[] = () :: Constraint
-  ValidFilterSpec (Tagged s t ': as) = ValidFilterSpec as
-  ValidFilterSpec (a ': as) =
-    TypeError
-      ( 'Text "Filter spec list item '"
-          ':<>: 'ShowType a
-          ':<>: 'Text "' is illegal."
-          ':$$: 'Text "Filter spec list should contain only Data.Tagged.Tagged types."
-      )
-instance
-  ( HasServer api context,
-    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters
-  ) =>
-  HasServer (FilterableBy '[] :> api) context
-  where
-  type ServerT (FilterableBy '[] :> api) m = ServerT api m
-  hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy api)
-  route Proxy = route (Proxy @api)
-
-instance
-  ( HasServer api context,
-    HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
-    KnownSymbol ta,
-    HasServer (FilterableBySingle ta a :> api) context,
-    HasServer (FilterableBy as :> api) context,
-    FromHttpApiData a,
-    Ord a
-  ) =>
-  HasServer (FilterableBy ('Tagged ta a ': as) :> api) context
-  where
-  type
-    ServerT (FilterableBy ('Tagged ta a ': as) :> api) m =
-      [Filter ta a] -> ServerT (FilterableBy as :> api) m
-
-  hoistServerWithContext _ pc nt s =
-    hoistServerWithContext (Proxy :: Proxy (FilterableBy as :> api)) pc nt . s
-
-  route Proxy = route api
-    where
-      api = Proxy :: Proxy (FilterableBySingle ta a :> FilterableBy as :> api)
+infixr 3 `FiltReqCons`
 
 data Predicate
   = Equals
@@ -121,8 +80,14 @@ predicateParser =
 class FilterValue a where
   parseFilterValue :: T.Text -> Either T.Text a
 
-instance (FromHttpApiData a) => FilterValue a where
+instance {-# OVERLAPPABLE #-} (FromHttpApiData a) => FilterValue a where
   parseFilterValue = parseQueryParam
+
+instance {-# OVERLAPS #-} FilterValue (CI String) where
+  parseFilterValue = fmap CI.mk . parseQueryParam
+
+instance {-# OVERLAPS #-} FilterValue (CI T.Text) where
+  parseFilterValue = fmap CI.mk . parseQueryParam
 
 filterQueryKeyParser ::
   forall tag a st.
@@ -171,6 +136,21 @@ parseQueryText qt = sequence $ foldr go [] qt
       Left _ -> b
       rPredicate -> (rPredicate <*> doParseValue key valM) : b
 
+class FiltersList filters where
+  parseFiltersFromQueryText :: QueryText -> Either T.Text (FilteringRequest filters)
+
+instance FiltersList '[] where
+  parseFiltersFromQueryText _ = Right FiltReqNil
+
+instance
+  (KnownSymbol ftag, FilterValue ftyp, FiltersList fs) =>
+  FiltersList ('Tagged ftag ftyp ': fs)
+  where
+  parseFiltersFromQueryText qt = do
+    eFilters <- parseQueryText @ftag @ftyp qt
+    eRemainFilt <- parseFiltersFromQueryText @fs qt
+    return $ eFilters `FiltReqCons` eRemainFilt
+
 data Filter (tag :: Symbol) a = Filter
   { getPredicate :: Predicate,
     getValue :: a
@@ -188,43 +168,38 @@ instance (Show a, KnownSymbol tag, Typeable a) => Show (Filter tag a) where
         ")"
       ]
 
-data FilterableBySingle (tag :: Symbol) a
-
-type PredicateSymbols :: [Symbol]
-type PredicateSymbols = ["eq", "lt", "gt", "neq", "nlt", "ngt", "gte", "lte"]
+data FilterableBy (a :: [Tagged Type])
 
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
-    Ord a,
-    KnownSymbol tag,
-    FromHttpApiData a
+    FiltersList filters
   ) =>
-  HasServer (FilterableBySingle tag a :> api) context
+  HasServer (FilterableBy filters :> api) context
   where
-  type ServerT (FilterableBySingle tag a :> api) m = [Filter tag a] -> ServerT api m
+  type ServerT (FilterableBy filters :> api) m = FilteringRequest filters -> ServerT api m
 
   hoistServerWithContext ::
-    Proxy (FilterableBySingle tag a :> api) ->
+    Proxy (FilterableBy filters :> api) ->
     Proxy context ->
     (forall x. m x -> n x) ->
-    ServerT (FilterableBySingle tag a :> api) m ->
-    ServerT (FilterableBySingle tag a :> api) n
+    ServerT (FilterableBy filters :> api) m ->
+    ServerT (FilterableBy filters :> api) n
   hoistServerWithContext _ pc nt s =
     hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
   route ::
-    Proxy (FilterableBySingle tag a :> api) ->
+    Proxy (FilterableBy filters :> api) ->
     Context context ->
-    Delayed env (Server (FilterableBySingle tag a :> api)) ->
+    Delayed env (Server (FilterableBy filters :> api)) ->
     Router env
   route Proxy context delayed =
     route api context $ addParameterCheck delayed (withRequest go)
     where
       queryText :: Request -> QueryText
       queryText = queryToQueryText . queryString
-      go :: Request -> DelayedIO [Filter tag a]
-      go req = eitherToDelayed $ parseQueryText $ queryText req
+      go :: Request -> DelayedIO (FilteringRequest filters)
+      go req = eitherToDelayed $ parseFiltersFromQueryText $ queryText req
       api = Proxy :: Proxy api
       eitherToDelayed = \case
         Left err -> delayedFailFatal err400 {errBody = T.encodeUtf8 $ T.fromStrict err}
