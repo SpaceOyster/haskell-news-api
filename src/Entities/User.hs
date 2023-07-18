@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -21,6 +22,8 @@ import Data.Time.Clock
 import Database.Beam
 import Database.Beam.Postgres
 import Effects.Database
+import Servant (BasicAuth)
+import Servant.Docs.Internal as Docs
 import qualified System.Random as Rand
 
 data UserT f = User
@@ -46,6 +49,12 @@ instance Table UserT where
   data PrimaryKey UserT f = UserId (Columnar f Int32)
     deriving (Generic, Beamable)
   primaryKey = UserId . _userId
+
+instance Docs.ToAuthInfo (BasicAuth realm User) where
+  toAuthInfo _ =
+    Docs.DocAuthentication
+      "Basic Access Authentication"
+      "HTTP header \"Authorization: Basic <Base64 encoded \'username:password\'>\""
 
 type UserId = PrimaryKey UserT Identity
 
@@ -74,7 +83,7 @@ data PasswordHash = PasswordHash
   }
   deriving (Show)
 
-generateHash :: MonadIO m => BS.ByteString -> m PasswordHash
+generateHash :: (MonadIO m) => BS.ByteString -> m PasswordHash
 generateHash pwd = liftIO $ do
   hashLength <- Rand.getStdRandom $ Rand.randomR (32, 64)
   hashSaltLength <- Rand.getStdRandom $ Rand.randomR (8, 32)
