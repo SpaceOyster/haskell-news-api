@@ -40,6 +40,7 @@ dependencies:
 - random
 - parsec
 - http-types
+- servant-docs
 
 library:
   source-dirs: src

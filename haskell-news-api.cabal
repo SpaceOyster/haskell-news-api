@@ -80,6 +80,7 @@ library
     , parsec
     , random
     , servant
+    , servant-docs
     , servant-server
     , text
     , time
@@ -111,6 +112,7 @@ executable haskell-news-api-exe
     , parsec
     , random
     , servant
+    , servant-docs
     , servant-server
     , text
     , time
@@ -143,6 +145,7 @@ test-suite haskell-news-api-test
     , parsec
     , random
     , servant
+    , servant-docs
     , servant-server
     , text
     , time
