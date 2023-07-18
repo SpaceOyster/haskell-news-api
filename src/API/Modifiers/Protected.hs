@@ -37,3 +37,5 @@ authHandler env = mkAuthHandler handler
     handler req = do
       let maybeBasicAuthData = decodeBAHdr req
       maybe (throwError err404) (appToHandler env . lookupAccount) maybeBasicAuthData
+
+type Protected = BasicAuth "basic-auth" User
