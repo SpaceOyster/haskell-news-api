@@ -1,5 +1,10 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module API.Modifiers.Protected where
 
@@ -12,6 +17,7 @@ import qualified Effects.Database as DB
 import Entities.User
 import Network.Wai
 import Servant
+import Servant.Docs.Internal as Docs
 import Servant.Server.Experimental.Auth
 import Servant.Server.Internal.BasicAuth
 
@@ -38,4 +44,38 @@ authHandler env = mkAuthHandler handler
       let maybeBasicAuthData = decodeBAHdr req
       maybe (throwError err404) (appToHandler env . lookupAccount) maybeBasicAuthData
 
-type Protected = BasicAuth "basic-auth" User
+
+data Protected
+
+-- | Basic Authentication
+instance
+  ( HasServer api context,
+    HasContextEntry context (AuthHandler Request User)
+  ) =>
+  HasServer (Protected :> api) context
+  where
+  type ServerT (Protected :> api) m = User -> ServerT api m
+
+  route Proxy = route (Proxy :: Proxy (AuthProtect "basic-auth" :> api))
+
+  hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt . s
+
+instance Docs.ToAuthInfo Protected where
+  toAuthInfo _ =
+    Docs.DocAuthentication
+      "Basic Access Authentication"
+      "HTTP header \"Authorization: Basic <Base64 encoded \'username:password\'>\""
+
+instance
+  ( Docs.HasDocs api
+  ) =>
+  Docs.HasDocs (Protected :> api)
+  where
+  docsFor Proxy (endpoint, action) =
+    docsFor (Proxy :: Proxy api) (endpoint, action')
+    where
+      authProxy = Proxy :: Proxy Protected
+      action' =
+        action
+          { Docs._authInfo = Docs._authInfo action <> [toAuthInfo authProxy]
+          }
