@@ -29,6 +29,7 @@ import API.Modifiers.Internal
   ( HasToBeInList,
     ListOfTags,
     ValidNamesList (),
+    reifySymbolsList,
   )
 import qualified API.Modifiers.Internal as Internal
 import Data.Bifunctor (first)
@@ -38,6 +39,7 @@ import Data.Typeable
 import GHC.Base
 import GHC.TypeLits.Extended
 import Servant
+import qualified Servant.Docs.Internal as Docs
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router
@@ -53,6 +55,10 @@ unSorting (Descend a) = a
 type family UnSorting a where
   UnSorting ('Ascend a) = a
   UnSorting ('Descend a) = a
+
+showSortingOrder :: Sorting a -> String
+showSortingOrder (Ascend _) = "asc"
+showSortingOrder (Descend _) = "desc"
 
 sortingParser :: Parsec.Parsec T.Text st (a -> Sorting a)
 sortingParser =
@@ -108,8 +114,6 @@ validateSortingName ordering name =
 
 data SortableBy (available :: [Symbol]) (deflt :: Sorting Symbol)
 
--- TODO: add HasDocs and HasClient instances
-
 instance
   ( HasServer api context,
     HasContextEntry (MkContextWithErrorFormatter context) ErrorFormatters,
@@ -145,3 +149,33 @@ instance
         let ordering = fromMaybe Ascend mOrder
             sortField = fromMaybe (T.pack "") mSortBy
          in f . SortingRequest . validateSortingName @available @deflt ordering $ sortField
+
+instance
+  ( Docs.HasDocs api,
+    ReifySorting deflt,
+    Internal.ReifySymbolsList available
+  ) =>
+  Docs.HasDocs (SortableBy available deflt :> api)
+  where
+  docsFor Proxy (endpoint, action) = Docs.docsFor subAPI (endpoint, action')
+    where
+      subAPI = Proxy :: Proxy api
+      action' = action {Docs._params = Docs._params action <> docQParam}
+      availableFieldNames = reifySymbolsList (Proxy @available)
+      defltSorting = reifySorting @deflt
+      defltFieldName = T.unpack (unSorting defltSorting) :: String
+      defltOrder = showSortingOrder defltSorting :: String
+      docQParam =
+        [ Docs.DocQueryParam
+            { Docs._paramName = "sort-by",
+              Docs._paramValues = availableFieldNames,
+              Docs._paramDesc = "A name of field to sort returned items by. Default is " <> defltFieldName,
+              Docs._paramKind = Docs.Normal
+            },
+          Docs.DocQueryParam
+            { Docs._paramName = "order",
+              Docs._paramValues = ["asc", "desc"],
+              Docs._paramDesc = "An sorting for returned items. Default is " <> defltOrder,
+              Docs._paramKind = Docs.Normal
+            }
+        ]
