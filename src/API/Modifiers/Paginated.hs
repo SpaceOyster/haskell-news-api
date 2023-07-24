@@ -73,10 +73,9 @@ withPaginationConfig pConfig f mOffset mLimit =
    in f $ Pagination {offset, limit}
 
 instance (HasDocs api) => HasDocs (Paginated :> api) where
-  docsFor Proxy (endpoint, action) = docsFor subAPI (endpoint', action')
+  docsFor Proxy (endpoint, action) = docsFor subAPI (endpoint, action')
     where
       subAPI = Proxy :: Proxy api
-      endpoint' = endpoint
       action' = action {Docs._params = Docs._params action <> docQParam}
       docQParam =
         [ Docs.DocQueryParam
