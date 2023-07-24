@@ -16,6 +16,8 @@ import qualified Data.Configurator.Types as Conf
 import Data.Maybe
 import Data.Typeable
 import Servant
+import Servant.Docs (HasDocs (docsFor))
+import qualified Servant.Docs.Internal as Docs
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.ErrorFormatter
 import Servant.Server.Internal.Router
@@ -69,3 +71,24 @@ withPaginationConfig pConfig f mOffset mLimit =
   let offset = fromMaybe (defaultOffset pConfig) mOffset
       limit = min (maxLimit pConfig) (fromMaybe (defaultLimit pConfig) mLimit)
    in f $ Pagination {offset, limit}
+
+instance (HasDocs api) => HasDocs (Paginated :> api) where
+  docsFor Proxy (endpoint, action) = docsFor subAPI (endpoint', action')
+    where
+      subAPI = Proxy :: Proxy api
+      endpoint' = endpoint
+      action' = action {Docs._params = Docs._params action <> docQParam}
+      docQParam =
+        [ Docs.DocQueryParam
+            { Docs._paramName = "offset",
+              Docs._paramValues = ["Natural Number"],
+              Docs._paramDesc = "Pagination offset. Skips first N items returned list. Default is 0.",
+              Docs._paramKind = Docs.Normal
+            },
+          Docs.DocQueryParam
+            { Docs._paramName = "limit",
+              Docs._paramValues = ["Natural Number"],
+              Docs._paramDesc = "Pagination limit. Limits the number of returned items. Default is specified in server config.",
+              Docs._paramKind = Docs.Normal
+            }
+        ]
