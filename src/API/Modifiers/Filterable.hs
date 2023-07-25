@@ -4,6 +4,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -28,6 +29,7 @@ import Data.CaseInsensitive (CI)
 import Data.CaseInsensitive as CI (mk)
 import Data.Data
 import Data.Kind (Type)
+import Data.List (intercalate)
 import qualified Data.Text.Extended as T
 import qualified Data.Text.Lazy as T (fromStrict)
 import qualified Data.Text.Lazy.Encoding as T (encodeUtf8)
@@ -45,6 +47,7 @@ import Servant
     err400,
     type (:>),
   )
+import Servant.Docs.Internal as Docs
 import Servant.Server.Internal.Delayed (Delayed, addParameterCheck)
 import Servant.Server.Internal.DelayedIO (DelayedIO, delayedFailFatal, withRequest)
 import Servant.Server.Internal.ErrorFormatter
@@ -65,6 +68,9 @@ data Predicate
   | GreaterThan
   | Not Predicate
   deriving (Show, Eq, Ord)
+
+predicateList :: [String]
+predicateList = ["eq", "lt", "lte", "gt", "gte", "neq", "nlt", "ngt"]
 
 predicateParser :: Parsec.Parsec T.Text st Predicate
 predicateParser =
@@ -204,3 +210,50 @@ instance
       eitherToDelayed = \case
         Left err -> delayedFailFatal err400 {errBody = T.encodeUtf8 $ T.fromStrict err}
         Right x -> pure x
+
+instance
+  ( HasDocs api,
+    FiltersSpecToDocQueryParams filters
+  ) =>
+  HasDocs (FilterableBy filters :> api)
+  where
+  docsFor Proxy (endpoint, action) = docsFor subAPI (endpoint, action')
+    where
+      subAPI = Proxy @api
+      action' = action {Docs._params = Docs._params action <> docQParams}
+      docQParams = filtersSpecToDocQueryParams (Proxy @filters)
+
+class FiltersSpecToDocQueryParams a where
+  filtersSpecToDocQueryParams :: Proxy a -> [Docs.DocQueryParam]
+
+instance FiltersSpecToDocQueryParams '[] where
+  filtersSpecToDocQueryParams _ = []
+
+instance
+  ( KnownSymbol tag,
+    Typeable typ,
+    FiltersSpecToDocQueryParams as
+  ) =>
+  FiltersSpecToDocQueryParams
+    ('Tagged tag typ ': as)
+  where
+  filtersSpecToDocQueryParams _ =
+    let filterName = symbolVal (Proxy @tag) :: String
+        desc =
+          unwords
+            [ "Filters response by " <> filterName <> " field,",
+              "with <predicate> (one of: " <> predicateListToDocExample <> " )",
+              "provided with accordingly typed value.\n",
+              "One field may be filtered by multiple predicates using separate query parameters."
+            ]
+        doc =
+          Docs.DocQueryParam
+            { Docs._paramName = filterName <> "_<predicate>",
+              Docs._paramValues = [show $ typeRep (Proxy @typ)],
+              Docs._paramDesc = desc,
+              Docs._paramKind = Docs.Normal
+            }
+     in doc : filtersSpecToDocQueryParams (Proxy @as)
+
+predicateListToDocExample :: String
+predicateListToDocExample = intercalate ", " $ fmap show predicateList
