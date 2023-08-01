@@ -2,11 +2,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module API.Modifiers.Beam.Sortable
@@ -24,12 +25,13 @@ import API.Modifiers.Beam.Internal
   ( ColumnList (..),
     LookupColumn (lookupColumn),
     ObtainColumn (obtainColumn),
-    TaggedColumn (TaggedCol, unTaggedCol),
+    TaggedColumn (TaggedCol),
     (.:.),
   )
 import API.Modifiers.Internal
 import API.Modifiers.Sortable
 import Data.Maybe (fromMaybe)
+import Data.Type.Bool (If, type (&&))
 import Data.Typeable (Proxy (..))
 import Data.Void
 import Database.Beam (asc_, desc_, orderBy_)
@@ -43,9 +45,14 @@ import Database.Beam.Query.Internal
     ThreadRewritable,
     WithRewrittenThread,
   )
+import GHC.Base (Constraint)
+import GHC.TypeLits.Extended
+  ( ErrorMessage (ShowType, Text, (:$$:), (:<>:)),
+    TypeError,
+  )
 
 sortingOrder_ ::
-  BeamSqlBackend be =>
+  (BeamSqlBackend be) =>
   Sorting a' ->
   (QExpr be s a -> QOrd be s a)
 sortingOrder_ (Ascend _) = asc_
@@ -81,18 +88,37 @@ composeBeamOrdering (SortingApp colList) sreq =
     defaultOrder = sortingOrder_ defaultSorting
     defaultColumn = obtainColumn colList (Proxy :: Proxy (UnSorting deflt))
 
+type family ValidSortingApp req app :: Constraint where
+  ValidSortingApp (SortingRequest available deflt) (SortingApp be s sortspec) =
+    If
+      ( IsSubset available (ListOfTags sortspec)
+          && SortingIsAvailable deflt available
+      )
+      (() :: Constraint)
+      ( TypeError
+          ( 'Text "The '"
+              ':<>: 'ShowType (SortingApp be s sortspec)
+              ':<>: 'Text "'"
+              ':$$: 'Text "is not a valid handler for '"
+              ':<>: 'ShowType (SortingRequest available deflt)
+              ':<>: 'Text "' type"
+          )
+      )
+
 sortBy_ ::
-  ( BeamSqlBackend be,
+  forall be s s' db a available deflt sortspec.
+  ( s' ~ QNested s,
+    BeamSqlBackend be,
     Projectible be a,
-    ThreadRewritable (QNested s) a,
+    ThreadRewritable s' a,
     ReifySorting deflt,
-    HasToBeSubset available (ListOfTags sortspec),
+    ValidSortingApp (SortingRequest available deflt) (SortingApp be s sortspec),
     SortingHasToBeAvailable deflt available,
-    LookupColumn be (QNested s) (ColumnList be (QNested s) sortspec),
-    ObtainColumn be (QNested s) (ColumnList be (QNested s) sortspec) (UnSorting deflt)
+    LookupColumn be s' (ColumnList be s' sortspec),
+    ObtainColumn be s' (ColumnList be s' sortspec) (UnSorting deflt)
   ) =>
   SortingRequest available deflt ->
-  (a -> SortingApp be (QNested s) sortspec) ->
-  Q be db (QNested s) a ->
-  Q be db s (WithRewrittenThread (QNested s) s a)
+  (a -> SortingApp be s' sortspec) ->
+  Q be db s' a ->
+  Q be db s (WithRewrittenThread s' s a)
 sortBy_ sreq sortApp = orderBy_ $ \a -> composeBeamOrdering (sortApp a) sreq

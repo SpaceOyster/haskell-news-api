@@ -21,6 +21,7 @@ module API.Modifiers.Sortable
     unSorting,
     UnSorting,
     SortingHasToBeAvailable,
+    SortingIsAvailable,
     ReifySorting (..),
   )
 where
@@ -32,6 +33,7 @@ import API.Modifiers.Internal
     reifySymbolsList,
   )
 import qualified API.Modifiers.Internal as Internal
+import API.Modifiers.Internal.PolyKinds as Internal
 import Data.Bifunctor (first)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text.Extended as T
@@ -91,8 +93,12 @@ newtype SortingRequest (available :: [Symbol]) (deflt :: Sorting Symbol) = Sorti
   { unSortingRequest :: Sorting T.Text
   }
 
-type SortingHasToBeAvailable (sort :: Sorting Symbol) (available :: [Symbol]) =
-  (HasToBeInList (ExtractColumnNameFromSorting sort) available) :: Constraint
+type SortingIsAvailable (sort :: Sorting Symbol) (avail :: [Symbol]) =
+  (Internal.Elem (ExtractColumnNameFromSorting sort) avail) :: Bool
+
+type SortingHasToBeAvailable (sort :: Sorting Symbol) (avail :: [Symbol]) =
+  (HasToBeInList (ExtractColumnNameFromSorting sort) avail) :: Constraint
+
 
 type SortingSpec (available :: [Symbol]) (deflt :: Sorting Symbol) =
   ( SortingHasToBeAvailable deflt available,
