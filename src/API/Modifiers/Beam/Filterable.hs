@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -14,13 +15,12 @@ module API.Modifiers.Beam.Filterable where
 
 import API.Modifiers.Beam.Internal
 import API.Modifiers.Filterable
-import API.Modifiers.Internal.PolyKinds
+import API.Modifiers.Internal
+import Data.Type.Bool (If)
 import Data.Typeable (Proxy (..))
 import Database.Beam.Backend.SQL
-import Database.Beam.Backend.SQL.AST
-import Database.Beam.Backend.SQL.SQL92
 import Database.Beam.Query
-import Database.Beam.Query.Internal
+import GHC.Base (Constraint)
 import GHC.TypeLits
 
 predicateToSql ::
@@ -119,6 +119,21 @@ filterByList_ filters@(_ : _) filterApp =
     go :: a -> Filter tag typ -> QExpr be s' Bool
     go table = composeBeamFilter (filterApp table)
 
+type family ValidFilteringApp req app :: Constraint where
+  ValidFilteringApp (FilteringRequest filterTypes) (FilteringApp be s filterspec) =
+    If
+      (IsSubset (ListOfTags filterTypes) (ListOfTags filterspec))
+      (() :: Constraint)
+      ( TypeError
+          ( 'Text "The '"
+              ':<>: 'ShowType (FilteringApp be s filterspec)
+              ':<>: 'Text "'"
+              ':$$: 'Text "is not a valid handler for '"
+                ':<>: 'ShowType (FilteringRequest filterTypes)
+                ':<>: 'Text "' type"
+          )
+      )
+
 class FilteringRequestBeam be s s' filterspec req where
   filterByRequest_ ::
     ( BeamSqlBackend be,
@@ -137,7 +152,8 @@ instance
     ObtainColumn' be s' (ColumnList be s filterspec) tag typ,
     HasSqlEqualityCheck be typ,
     BeamBackendSupportsValueSyntaxFor be typ,
-    FilteringRequestBeam be s s' filterspec (FilteringRequest as)
+    FilteringRequestBeam be s s' filterspec (FilteringRequest as),
+    ValidFilteringApp (FilteringRequest ('Tagged tag typ ': as)) (FilteringApp be s filterspec)
   ) =>
   FilteringRequestBeam be s s' filterspec (FilteringRequest ('Tagged tag typ ': as))
   where

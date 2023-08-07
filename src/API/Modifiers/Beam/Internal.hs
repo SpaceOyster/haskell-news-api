@@ -99,22 +99,31 @@ type family HasToBeProvided (a :: Symbol) cols :: Constraint where
 class ObtainColumn' be s a (tag :: Symbol) typ | a tag -> be s where
   obtainColumn' :: a -> Proxy tag -> Proxy typ -> QExpr be s typ
 
+-- | This Class wrapping is implemented to avoid recursive check for all the
+-- sublists, which had resulted in multiplicating compile-time error messages
+-- by the lists length. This behaviour was caused by HasToBeProvided
+-- constraint, which now is checked only once - for the whole list, instead
+-- of doing such for each sublist.
+instance
+  (ObtainColumnInternal' be s a tag typ, HasToBeProvided tag a) =>
+  ObtainColumn' be s a tag typ
+  where
+  obtainColumn' = obtainColumnInternal'
+
+class ObtainColumnInternal' be s a (tag :: Symbol) typ | a tag -> be s where
+  obtainColumnInternal' :: a -> Proxy tag -> Proxy typ -> QExpr be s typ
+
 instance
   {-# OVERLAPPABLE #-}
   forall be s a as typ (tag :: Symbol) (tag' :: Symbol).
-  ( HasToBeProvided tag (ColumnList be s ('Tagged tag' a ': as)),
-    ObtainColumn' be s (ColumnList be s as) tag typ
+  ( ObtainColumnInternal' be s (ColumnList be s as) tag typ
   ) =>
-  ObtainColumn' be s (ColumnList be s ('Tagged tag' a ': as)) tag typ
+  ObtainColumnInternal' be s (ColumnList be s ('Tagged tag' a ': as)) tag typ
   where
-  obtainColumn' (TaggedCol _c `ColCons` as) = obtainColumn' as
+  obtainColumnInternal' (TaggedCol _c `ColCons` as) = obtainColumnInternal' as
 
-instance
-  {-# OVERLAPPING #-}
-  (HasToBeProvided tag (ColumnList be s ('Tagged tag a ': as))) =>
-  ObtainColumn' be s (ColumnList be s ('Tagged tag a ': as)) tag a
-  where
-  obtainColumn' (TaggedCol c `ColCons` _as) _ _ = c
+instance {-# OVERLAPPING #-} ObtainColumnInternal' be s (ColumnList be s ('Tagged tag a ': as)) tag a where
+  obtainColumnInternal' (TaggedCol c `ColCons` _as) _ _ = c
 
 class ObtainColumn be s a (tag :: Symbol) | a tag -> be s where
   obtainColumn :: a -> Proxy tag -> QExpr be s Void
