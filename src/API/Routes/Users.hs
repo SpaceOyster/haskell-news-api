@@ -19,12 +19,18 @@ import DB
 import Data.Aeson as A
 import Data.CaseInsensitive as CI
 import qualified Data.Text.Extended as T
+import Data.Time
+  ( Day (ModifiedJulianDay),
+    UTCTime (UTCTime, utctDay, utctDayTime),
+  )
+import Data.Time.Clock (picosecondsToDiffTime)
 import Database.Beam
 import Effects.Config
 import Effects.Database as DB
 import Effects.Log as Log
 import Entities.User
 import Servant
+import Servant.Docs as Docs (ToSample (toSamples), singleSample)
 
 type UsersAPI =
   Paginated
@@ -53,6 +59,27 @@ instance A.ToJSON UserListItem where
         "is-admin" A..= _userIsAdmin,
         "is-allowed-to-post" A..= _userIsAllowedToPost
       ]
+
+instance Docs.ToSample UserListItem where
+  toSamples _ = Docs.singleSample $ UserListItem user
+    where
+      date =
+        UTCTime
+          { utctDay = ModifiedJulianDay 123456,
+            utctDayTime = picosecondsToDiffTime 123456
+          }
+      user =
+        User
+          { _userId = 1234,
+            _userName = "Name",
+            _userLogin = "Login",
+            _userPasswordHash = "passwordHash",
+            _userPasswordHashIterations = 1234,
+            _userPasswordSalt = "salt",
+            _userRegistrationDate = date,
+            _userIsAdmin = False,
+            _userIsAllowedToPost = True
+          }
 
 listUsers ::
   ( DB.MonadDatabase m,
