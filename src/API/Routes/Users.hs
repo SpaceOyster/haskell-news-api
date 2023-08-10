@@ -162,3 +162,13 @@ instance A.FromJSON NewUserJSON where
     _newUserIsAdmin <- o .:? "is-admin" .!= False
     _newUserIsAllowedToPost <- o .:? "is-allowed-to-post" .!= False
     return $ NewUserJSON $ NewUser {..}
+
+instance A.ToJSON NewUserJSON where
+  toJSON (NewUserJSON (NewUser {..})) =
+    A.object
+      [ "login" A..= _newUserLogin,
+        "name" A..= _newUserName,
+        "password" A..= _newUserPassword,
+        "is-admin" A..= _newUserIsAdmin,
+        "is-allowed-to-post" A..= _newUserIsAllowedToPost
+      ]
