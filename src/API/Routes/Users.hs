@@ -8,16 +8,45 @@
 
 module API.Routes.Users where
 
+import API.Modifiers.Beam.Filterable
+  ( FilteringApp (FilteringApp),
+    FilteringRequestBeam (filterByRequest_),
+    filterFor_,
+  )
 import API.Modifiers.Beam.Sortable
-import API.Modifiers.Paginated
-import API.Modifiers.Protected ()
+  ( ColumnList (ColNil),
+    SortingApp (SortingApp),
+    sortBy_,
+    sorterFor_,
+    (.:.),
+  )
+import API.Modifiers.Filterable
+  ( FilterableBy,
+    FilteringRequest,
+    Tagged (Tagged),
+  )
+import API.Modifiers.Paginated (Paginated, Pagination (..))
+import API.Modifiers.Protected (Protected)
 import API.Modifiers.Sortable
-import App.Monad
+  ( SortableBy,
+    Sorting (Ascend),
+    SortingRequest (unSortingRequest),
+  )
+import App.Monad (App)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
-import DB
+import DB (NewsDB (_newsUsers), newsDB)
 import Data.Aeson as A
-import Data.CaseInsensitive as CI
+  ( FromJSON (parseJSON),
+    KeyValue ((.=)),
+    ToJSON (toJSON),
+    object,
+    withObject,
+    (.!=),
+    (.:),
+    (.:?),
+  )
+import Data.CaseInsensitive as CI (CI (original))
 import qualified Data.Text.Extended as T
 import Data.Time
   ( Day (ModifiedJulianDay),
@@ -25,11 +54,46 @@ import Data.Time
   )
 import Data.Time.Clock (picosecondsToDiffTime)
 import Database.Beam
-import Effects.Config
-import Effects.Database as DB
-import Effects.Log as Log
+  ( all_,
+    limit_,
+    offset_,
+    runSelectReturningList,
+    select,
+  )
+import Effects.Config (MonadConfig)
+import Effects.Database as DB (MonadDatabase (..))
+import Effects.Log as Log (MonadLog, logInfo, logWarning)
 import Entities.User
+  ( NewUserCredentials (..),
+    User,
+    UserT
+      ( User,
+        _userId,
+        _userIsAdmin,
+        _userIsAllowedToPost,
+        _userLogin,
+        _userName,
+        _userPasswordHash,
+        _userPasswordHashIterations,
+        _userPasswordSalt,
+        _userRegistrationDate
+      ),
+    insertNewUser,
+    lookupUserLogin,
+  )
 import Servant
+  ( Get,
+    JSON,
+    PostCreated,
+    ReqBody,
+    ServerError,
+    ServerT,
+    err401,
+    err503,
+    throwError,
+    (:<|>) (..),
+    (:>),
+  )
 import Servant.Docs as Docs (ToSample (toSamples), singleSample)
 
 type UsersAPI =
@@ -42,8 +106,15 @@ type UsersAPI =
             "is-allowed-to-post"
           ]
          ('Ascend "name")
-    :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] T.Text
+    :> FilterableBy
+         '[ 'Tagged "name" T.Text,
+            'Tagged "login" (CI T.Text),
+            'Tagged "registration-date" UTCTime,
+            'Tagged "is-admin" Bool,
+            'Tagged "is-allowed-to-post" Bool
+          ]
     :> Get '[JSON] [UserJSON]
+    :<|> Protected :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] UserJSON
 
 users :: ServerT UsersAPI App
 users = listUsers :<|> addNewUser
@@ -97,13 +168,21 @@ listUsers ::
        "is-allowed-to-post"
      ]
     ('Ascend "name") ->
-listUsers Pagination {..} sorting = do
+  FilteringRequest
+    '[ 'Tagged "name" T.Text,
+       'Tagged "login" (CI T.Text),
+       'Tagged "registration-date" UTCTime,
+       'Tagged "is-admin" Bool,
+       'Tagged "is-allowed-to-post" Bool
+     ] ->
   m [UserJSON]
+listUsers Pagination {..} sorting fReq = do
   Log.logInfo $ "Get /user sort-by=" <> T.tshow (unSortingRequest sorting)
   usrs <-
     DB.runQuery
       . runSelectReturningList
       . select
+      . filterByRequest_ fReq filters
       . limit_ limit
       . offset_ offset
       . sortBy_ sorting sorters
@@ -120,6 +199,16 @@ listUsers Pagination {..} sorting = do
             .:. sorterFor_ @"is-allowed-to-post" _userIsAllowedToPost
             .:. ColNil
         )
+    filters User {..} =
+      FilteringApp
+        ( filterFor_ @"is-admin" _userIsAdmin
+            .:. filterFor_ @"name" _userName
+            .:. filterFor_ @"login" _userLogin
+            .:. filterFor_ @"registration-date" _userRegistrationDate
+            .:. filterFor_ @"is-admin" _userIsAdmin
+            .:. filterFor_ @"is-allowed-to-post" _userIsAllowedToPost
+            .:. ColNil
+        )
 
 addNewUser ::
   ( DB.MonadDatabase m,
@@ -129,28 +218,31 @@ addNewUser ::
   ) =>
   User ->
   NewUserJSON ->
-  m T.Text
+  m UserJSON
 addNewUser usr (NewUserJSON newUser) =
-  if _userIsAdmin usr then do_createUser else do_on_unauthorised
+  if _userIsAdmin usr then doCreateUser else doOnUnauthorised
   where
-    do_createUser = do
-      insertNewUser (_newsUsers newsDB) newUser
-      do_logSuccess
-      return $ "User " <> _newUserName newUser <> " successfully created."
-    do_on_unauthorised = do_logUnauthorised >> throwError err401
-    do_logSuccess =
-      Log.logInfo . mconcat $
-        [ "User ",
-          CI.original (_userLogin usr),
-          " created new user :",
-          _newUserName newUser
-        ]
-    do_logUnauthorised =
-      Log.logWarning . mconcat $
-        [ "User ",
-          CI.original (_userLogin usr),
-          " is not authorised to create a new user"
-        ]
+    db = _newsUsers newsDB
+    newUserLogin = _newUserLogin newUser
+    creatorLogin = CI.original (_userLogin usr)
+    doCreateUser = do
+      insertNewUser db newUser
+      doCheckIfSuccessfull
+    doOnUnauthorised = doLogUnauthorised >> throwError err401
+    doCheckIfSuccessfull = do
+      newUserMaybe <- lookupUserLogin db newUserLogin
+      case newUserMaybe of
+        Nothing -> doLogDBError >> throwError err503
+        Just u -> doLogSuccess >> return (UserJSON u)
+    doLogSuccess =
+      Log.logInfo $
+        "User " <> creatorLogin <> " created new user :" <> newUserLogin
+    doLogUnauthorised =
+      Log.logWarning $
+        "User " <> creatorLogin <> " is not authorised to create a new user"
+    doLogDBError =
+      Log.logWarning $
+        "User " <> newUserLogin <> " was not added to Database"
 
 newtype NewUserJSON = NewUserJSON NewUserCredentials
 
