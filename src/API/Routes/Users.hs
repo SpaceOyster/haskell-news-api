@@ -172,3 +172,15 @@ instance A.ToJSON NewUserJSON where
         "is-admin" A..= _newUserIsAdmin,
         "is-allowed-to-post" A..= _newUserIsAllowedToPost
       ]
+
+instance Docs.ToSample NewUserJSON where
+  toSamples _ = Docs.singleSample $ NewUserJSON newUser
+    where
+      newUser =
+        NewUser
+          { _newUserName = "name",
+            _newUserLogin = "login",
+            _newUserPassword = "password",
+            _newUserIsAdmin = False,
+            _newUserIsAllowedToPost = True
+          }
