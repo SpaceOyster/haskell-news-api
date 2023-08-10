@@ -42,16 +42,16 @@ type UsersAPI =
             "is-allowed-to-post"
           ]
          ('Ascend "name")
-    :> Get '[JSON] [UserListItem]
     :<|> AuthProtect "basic-auth" :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] T.Text
+    :> Get '[JSON] [UserJSON]
 
 users :: ServerT UsersAPI App
 users = listUsers :<|> addNewUser
 
-newtype UserListItem = UserListItem User
+newtype UserJSON = UserJSON User
 
-instance A.ToJSON UserListItem where
-  toJSON (UserListItem User {..}) =
+instance A.ToJSON UserJSON where
+  toJSON (UserJSON User {..}) =
     A.object
       [ "name" A..= _userName,
         "login" A..= CI.original _userLogin,
@@ -60,8 +60,8 @@ instance A.ToJSON UserListItem where
         "is-allowed-to-post" A..= _userIsAllowedToPost
       ]
 
-instance Docs.ToSample UserListItem where
-  toSamples _ = Docs.singleSample $ UserListItem user
+instance Docs.ToSample UserJSON where
+  toSamples _ = Docs.singleSample $ UserJSON user
     where
       dateTime =
         UTCTime
@@ -97,8 +97,8 @@ listUsers ::
        "is-allowed-to-post"
      ]
     ('Ascend "name") ->
-  m [UserListItem]
 listUsers Pagination {..} sorting = do
+  m [UserJSON]
   Log.logInfo $ "Get /user sort-by=" <> T.tshow (unSortingRequest sorting)
   usrs <-
     DB.runQuery
@@ -109,7 +109,7 @@ listUsers Pagination {..} sorting = do
       . sortBy_ sorting sorters
       . all_
       $ _newsUsers newsDB
-  pure $ UserListItem <$> usrs
+  pure $ UserJSON <$> usrs
   where
     sorters User {..} =
       SortingApp
