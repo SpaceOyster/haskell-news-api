@@ -63,7 +63,7 @@ instance A.ToJSON UserListItem where
 instance Docs.ToSample UserListItem where
   toSamples _ = Docs.singleSample $ UserListItem user
     where
-      date =
+      dateTime =
         UTCTime
           { utctDay = ModifiedJulianDay 123456,
             utctDayTime = picosecondsToDiffTime 123456
@@ -76,7 +76,7 @@ instance Docs.ToSample UserListItem where
             _userPasswordHash = "passwordHash",
             _userPasswordHashIterations = 1234,
             _userPasswordSalt = "salt",
-            _userRegistrationDate = date,
+            _userRegistrationDate = dateTime,
             _userIsAdmin = False,
             _userIsAllowedToPost = True
           }
