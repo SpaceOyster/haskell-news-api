@@ -53,3 +53,15 @@ insertNewCategory table cat = do
             _categoryParentCategory = val_ $ _categoryParentCategory cat
           }
       ]
+
+lookupCategory ::
+  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  CI Text ->
+  m (Maybe Category)
+lookupCategory table catName =
+  runQuery
+    . runSelectReturningOne
+    . select
+    . filter_ (\c -> _categoryName c ==. val_ catName)
+    $ all_ table
