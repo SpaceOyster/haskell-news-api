@@ -11,6 +11,7 @@ import Data.CaseInsensitive as CI (CI (original), mk)
 import Data.Text
 import Entities.Category
 import Servant
+import Servant.Docs as Docs (ToSample (toSamples), singleSample)
 
 type CategoriesAPI = Get '[JSON] Text :<|> PostCreated '[JSON] Text
 
@@ -29,6 +30,23 @@ instance A.FromJSON CategoryJSON where
     _categoryName <- CI.mk <$> o A..: "name"
     _categoryParentCategory <- CategoryId . fmap CI.mk <$> o A..:? "parent"
     return $ CategoryJSON $ Category {..}
+
+instance Docs.ToSample CategoryJSON where
+  toSamples _ =
+    [ ("Category may have no parent", CategoryJSON cat1),
+      ("Category can have a parent", CategoryJSON cat2)
+    ]
+    where
+      cat2 =
+        Category
+          { _categoryName = "Haskell",
+            _categoryParentCategory = CategoryId $ Just "Functional Programing"
+          }
+      cat1 =
+        Category
+          { _categoryName = "Outer Space",
+            _categoryParentCategory = CategoryId Nothing
+          }
 
 categories :: ServerT CategoriesAPI App
 categories = return "GET categories endpoint" :<|> return "POST categories endpoint"
