@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -9,6 +10,8 @@ module Entities.Category where
 import Data.CaseInsensitive as CI
 import Data.Text
 import Database.Beam
+import Database.Beam.Postgres
+import Effects.Database
 
 data CategoryT f = Category
   { _categoryName :: Columnar f (CI Text),
@@ -36,3 +39,17 @@ deriving instance Show (PrimaryKey CategoryT (Nullable Identity))
 deriving instance Eq (PrimaryKey CategoryT Identity)
 
 deriving instance Eq (PrimaryKey CategoryT (Nullable Identity))
+
+insertNewCategory ::
+  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  Category ->
+  m ()
+insertNewCategory table cat = do
+  runQuery . runInsert . insert table $
+    insertExpressions
+      [ Category
+          { _categoryName = val_ $ _categoryName cat,
+            _categoryParentCategory = val_ $ _categoryParentCategory cat
+          }
+      ]
