@@ -24,5 +24,11 @@ instance A.ToJSON CategoryJSON where
         CategoryId idMaybe -> idMaybe
       maybeParentField = maybe [] (\i -> ["parent" A..= CI.original i]) catIdM
 
+instance A.FromJSON CategoryJSON where
+  parseJSON = A.withObject "CategoryJSON" $ \o -> do
+    _categoryName <- CI.mk <$> o A..: "name"
+    _categoryParentCategory <- CategoryId . fmap CI.mk <$> o A..:? "parent"
+    return $ CategoryJSON $ Category {..}
+
 categories :: ServerT CategoriesAPI App
 categories = return "GET categories endpoint" :<|> return "POST categories endpoint"
