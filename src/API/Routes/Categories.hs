@@ -169,10 +169,10 @@ postCategories usr (CategoryJSON cat) =
     doOnUnauthorised = doLogUnauthorised >> throwError err401
     doLogSuccess =
       Log.logInfo $
-        "User " <> creatorLogin <> " created new category :" <> T.tshow cat
+        "User \"" <> creatorLogin <> "\" created new category :\"" <> T.tshow cat <> "\""
     doLogUnauthorised =
       Log.logWarning $
-        "User " <> creatorLogin <> " is not authorised to create a new category"
+        "User \"" <> creatorLogin <> "\" is not authorised to create a new category"
     doLogDBError =
       Log.logWarning $
-        "Category " <> T.tshow cat <> " was not added to Database"
+        "Category \"" <> T.tshow cat <> "\" was not added to Database"
