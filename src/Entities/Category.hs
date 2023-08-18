@@ -45,14 +45,7 @@ insertNewCategory ::
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   Category ->
   m ()
-insertNewCategory table cat = do
-  runQuery . runInsert . insert table $
-    insertExpressions
-      [ Category
-          { _categoryName = val_ $ _categoryName cat,
-            _categoryParentCategory = val_ $ _categoryParentCategory cat
-          }
-      ]
+insertNewCategory table = runQuery . runInsert . insert table . insertValues . (: [])
 
 lookupCategory ::
   (MonadDatabase m, MonadIO m, Database Postgres db) =>
