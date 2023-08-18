@@ -222,27 +222,27 @@ addNewUser ::
 addNewUser usr (NewUserJSON newUser) =
   if _userIsAdmin usr then doCreateUser else doOnUnauthorised
   where
-    db = _newsUsers newsDB
+    table = _newsUsers newsDB
     newUserLogin = _newUserLogin newUser
     creatorLogin = CI.original (_userLogin usr)
     doCreateUser = do
-      insertNewUser db newUser
+      insertNewUser table newUser
       doCheckIfSuccessfull
     doOnUnauthorised = doLogUnauthorised >> throwError err401
     doCheckIfSuccessfull = do
-      newUserMaybe <- lookupUserLogin db newUserLogin
+      newUserMaybe <- lookupUserLogin table newUserLogin
       case newUserMaybe of
         Nothing -> doLogDBError >> throwError err503
         Just u -> doLogSuccess >> return (UserJSON u)
     doLogSuccess =
       Log.logInfo $
-        "User " <> creatorLogin <> " created new user :" <> newUserLogin
+        "User \"" <> creatorLogin <> "\" created new user :\"" <> newUserLogin <> "\""
     doLogUnauthorised =
       Log.logWarning $
-        "User " <> creatorLogin <> " is not authorised to create a new user"
+        "User \"" <> creatorLogin <> "\" is not authorised to create a new user"
     doLogDBError =
       Log.logWarning $
-        "User " <> newUserLogin <> " was not added to Database"
+        "User \"" <> newUserLogin <> "\" was not added to Database"
 
 newtype NewUserJSON = NewUserJSON NewUserCredentials
 
