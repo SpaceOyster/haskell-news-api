@@ -3,6 +3,7 @@
 
 module DB where
 
+import Data.Text as T
 import Database.Beam
 import Entities.Category
 import Entities.Image
@@ -18,4 +19,13 @@ data NewsDB f = NewsDB
   deriving (Generic, Database be)
 
 newsDB :: DatabaseSettings be NewsDB
-newsDB = defaultDbSettings
+newsDB =
+  defaultDbSettings
+    `withDbModification` dbModification
+      { _newsCategories =
+          modifyTableFields
+            tableModification
+              { _categoryParentCategory =
+                  CategoryId $ fieldNamed (T.pack "parent_category")
+              }
+      }
