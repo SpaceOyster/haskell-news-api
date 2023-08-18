@@ -2,11 +2,36 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API.Routes.Categories where
 
+import API.Modifiers.Beam.Filterable
+  ( FilteringApp (FilteringApp),
+    FilteringRequestBeam (filterByRequest_),
+    filterFor_,
+  )
+import API.Modifiers.Beam.Sortable
+  ( ColumnList (ColNil),
+    SortingApp (SortingApp),
+    sortBy_,
+    sorterFor_,
+    (.:.),
+  )
+import API.Modifiers.Filterable
+  ( FilterableBy,
+    FilteringRequest,
+    Tagged (Tagged),
+  )
+import API.Modifiers.Paginated (Paginated, Pagination (..))
 import API.Modifiers.Protected (Protected)
+import API.Modifiers.Sortable
+  ( SortableBy,
+    Sorting (Ascend),
+    SortingRequest (unSortingRequest),
+  )
 import App.Monad
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
@@ -21,9 +46,29 @@ import Effects.Log as Log (MonadLog, logInfo, logWarning)
 import Entities.Category
 import Entities.User
 import Servant
+  ( Get,
+    JSON,
+    PostCreated,
+    ReqBody,
+    ServerError,
+    ServerT,
+    err401,
+    err503,
+    throwError,
+    (:<|>) (..),
+    (:>),
+  )
 import Servant.Docs as Docs (ToSample (toSamples), singleSample)
 
-type CategoriesAPI = Get '[JSON] Text :<|> Protected :> ReqBody '[JSON] CategoryJSON :> PostCreated '[JSON] CategoryJSON
+type CategoriesAPI =
+  Paginated
+    :> SortableBy '["name", "parent"] ('Ascend "name")
+    :> FilterableBy
+         '[ 'Tagged "name" (CI T.Text),
+            'Tagged "parent" (CI T.Text)
+          ]
+    :> Get '[JSON] [CategoryJSON]
+    :<|> Protected :> ReqBody '[JSON] CategoryJSON :> PostCreated '[JSON] CategoryJSON
 
 newtype CategoryJSON = CategoryJSON Category
 
@@ -61,7 +106,43 @@ instance Docs.ToSample CategoryJSON where
 categories :: ServerT CategoriesAPI App
 categories = listCategories :<|> postCategories
 
-listCategories = return "GET categories endpoint"
+listCategories ::
+  ( DB.MonadDatabase m,
+    Log.MonadLog m,
+    MonadIO m,
+    MonadError ServerError m
+  ) =>
+  Pagination ->
+  SortingRequest '["name", "parent"] ('Ascend "name") ->
+  FilteringRequest
+    '[ 'Tagged "name" (CI Text), 'Tagged "parent" (CI Text)] ->
+  m [CategoryJSON]
+listCategories (Pagination {..}) sorting fReq = do
+  Log.logInfo $ "Get /categories sort-by=" <> T.tshow (unSortingRequest sorting)
+  usrs <-
+    DB.runQuery
+      . runSelectReturningList
+      . select
+      . filterByRequest_ fReq filters
+      . limit_ limit
+      . offset_ offset
+      . sortBy_ sorting sorters
+      . all_
+      $ _newsCategories newsDB
+  pure $ CategoryJSON <$> usrs
+  where
+    sorters Category {..} =
+      SortingApp
+        ( sorterFor_ @"name" _categoryName
+            .:. sorterFor_ @"parent" _categoryName
+            .:. ColNil
+        )
+    filters Category {..} =
+      FilteringApp
+        ( filterFor_ @"name" _categoryName
+            .:. filterFor_ @"parent" _categoryName
+            .:. ColNil
+        )
 
 postCategories ::
   ( DB.MonadDatabase m,
