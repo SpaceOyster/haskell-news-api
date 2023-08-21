@@ -36,12 +36,12 @@ data APIConfig = APIConfig
   deriving (Show)
 
 readConfigFromFile :: (MonadIO m, MonadCatch m) => FilePath -> m AppConfig
-readConfigFromFile cfgPath = flip catch rethrow $ do
+readConfigFromFile cfgPath = catchRethrowWith rethrow $ do
   cfgContents <- liftIO (C.load [C.Required cfgPath])
   liftIO $ toAppConfig cfgContents
   where
     rethrow e =
-      throwM . configError . mconcat $
+      configError . mconcat $
         [ "Failed to read config file: ",
           T.tshow cfgPath,
           ". With Error: ",
@@ -57,11 +57,11 @@ toAppConfig cfg = do
   return $ AppConfig {..}
 
 readSubconfig :: C.Config -> C.Name -> (C.Config -> IO a) -> IO a
-readSubconfig cfg subconf parser = do
-  parser (C.subconfig subconf cfg) `catch` rethrow
+readSubconfig cfg subconf parser =
+  catchRethrowWith rethrow $ parser (C.subconfig subconf cfg)
   where
     rethrow e =
-      throwM . configError . mconcat $
+      configError . mconcat $
         [ "Failed to read subconfig: ",
           T.tshow subconf,
           ". With Error: ",
