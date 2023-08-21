@@ -32,7 +32,9 @@ import API.Modifiers.Sortable
     Sorting (Ascend),
     SortingRequest (unSortingRequest),
   )
+import App.Error
 import App.Monad (App)
+import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import DB (NewsDB (_newsUsers), newsDB)
@@ -46,7 +48,9 @@ import Data.Aeson as A
     (.:),
     (.:?),
   )
+import Data.ByteString.Lazy (fromStrict)
 import Data.CaseInsensitive as CI (CI (original))
+import Data.Text.Encoding (encodeUtf8)
 import qualified Data.Text.Extended as T
 import Data.Time
   ( Day (ModifiedJulianDay),
@@ -86,9 +90,10 @@ import Servant
     JSON,
     PostCreated,
     ReqBody,
-    ServerError,
+    ServerError (errBody),
     ServerT,
     err401,
+    err500,
     err503,
     throwError,
     (:<|>) (..),
@@ -214,7 +219,9 @@ addNewUser ::
   ( DB.MonadDatabase m,
     Log.MonadLog m,
     MonadIO m,
-    MonadError ServerError m
+    MonadError ServerError m,
+    MonadThrow m,
+    MonadCatch m
   ) =>
   User ->
   NewUserJSON ->
@@ -225,8 +232,11 @@ addNewUser usr (NewUserJSON newUser) =
     table = _newsUsers newsDB
     newUserLogin = _newUserLogin newUser
     creatorLogin = CI.original (_userLogin usr)
+    dealWithAPIerror e = case e of
+      APIError msg -> throwError $ err500 {errBody = fromStrict $ encodeUtf8 msg}
+      other -> throwM other
     doCreateUser = do
-      insertNewUser table newUser
+      flip catch dealWithAPIerror $ insertNewUser table newUser
       doCheckIfSuccessfull
     doOnUnauthorised = doLogUnauthorised >> throwError err401
     doCheckIfSuccessfull = do
