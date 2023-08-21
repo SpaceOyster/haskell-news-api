@@ -1,14 +1,17 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module App.Monad where
 
 import App.Env (Env (envConfig, envDatabase, envLogger))
-import Control.Monad.Catch (MonadCatch, MonadThrow)
+import App.Error (catchRethrowWith, dbError, loggerError)
+import Control.Monad.Catch (MonadCatch, MonadThrow, SomeException)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ReaderT (..), asks)
+import Data.Text.Extended as T
 import Effects.Config as Config
 import Effects.Database as DB
 import Effects.Log as Log
@@ -42,13 +45,25 @@ instance Log.MonadLog App where
   doLog p t = do
     hLog <- asks envLogger
     let logAction = Logger.getLog hLog
-    App . liftIO $ logAction p t
+    catchRethrowWith rethrow $ App . liftIO $ logAction p t
+    where
+      rethrow e =
+        loggerError . mconcat $
+          [ "Logger Error: ",
+            T.tshow (e :: SomeException)
+          ]
 
 instance DB.MonadDatabase App where
   runQuery q = do
     hDB <- asks envDatabase
     let runQ = DB.runDBQuery hDB
-    App . liftIO $ runQ q
+    catchRethrowWith rethrow $ App . liftIO $ runQ q
+    where
+      rethrow e =
+        dbError . mconcat $
+          [ "Failed to runquery with Error: ",
+            T.tshow (e :: SomeException)
+          ]
 
 instance Config.MonadConfig App where
   getConfig = asks envConfig
