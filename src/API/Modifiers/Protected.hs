@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -12,8 +13,10 @@ import App.Monad
 import DB
 import Data.CaseInsensitive as CI (mk)
 import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Extended as T
 import Database.Beam
 import qualified Effects.Database as DB
+import Effects.Log as Log (MonadLog, logInfo, logWarning)
 import Entities.User
 import Network.Wai
 import Servant
@@ -25,17 +28,26 @@ type instance AuthServerData (AuthProtect "basic-auth") = User
 
 lookupAccount :: BasicAuthData -> App User
 lookupAccount basicAuthData = do
-  let username = CI.mk $ decodeUtf8 (basicAuthUsername basicAuthData)
-  let pass = basicAuthPassword basicAuthData
-  maybeUser <-
-    DB.runQuery
-      . runSelectReturningOne
-      . select
-      . filter_ (\u -> _userLogin u ==. val_ username)
-      $ all_ (_newsUsers newsDB)
-  case maybeUser of
-    Nothing -> throwError err404
-    Just user -> if checkPassword pass user then pure user else throwError err404
+  doLogAuthAttempt
+  maybeUser <- lookupUserLogin (_newsUsers newsDB) username
+  maybe onUserNotFound onUserFound maybeUser
+  where
+    username = decodeUtf8 (basicAuthUsername basicAuthData)
+    pass = basicAuthPassword basicAuthData
+    onUnauthorised = doLogUnauthorised >> throwError err404
+    onAuthorised user = doLogSuccess >> pure user
+    onUserNotFound = doLogNoSuchUser >> throwError err404
+    onUserFound user =
+      if checkPassword pass user
+        then onAuthorised user
+        else onUnauthorised
+    doLogAuthAttempt = Log.logInfo $ "Auth: attempt for User \"" <> username <> "\""
+    doLogNoSuchUser = Log.logWarning $ "Auth: User \"" <> username <> "\" not found"
+    doLogUnauthorised =
+      Log.logWarning $
+        "Auth: User \"" <> username <> "\" is not authorised to create a new category"
+    doLogSuccess =
+      Log.logInfo $ "Auth: User \"" <> username <> "\" successfully authorised"
 
 authHandler :: AppEnv -> AuthHandler Request User
 authHandler env = mkAuthHandler handler
