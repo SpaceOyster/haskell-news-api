@@ -2,13 +2,16 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Entities.User where
 
+import App.Error (apiError)
+import Control.Monad (when)
+import Control.Monad.Catch (MonadThrow, throwM)
 import qualified Crypto.KDF.PBKDF2 as Crypto
 import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
@@ -74,7 +77,7 @@ data PasswordHash = PasswordHash
   }
   deriving (Show)
 
-generateHash :: MonadIO m => BS.ByteString -> m PasswordHash
+generateHash :: (MonadIO m) => BS.ByteString -> m PasswordHash
 generateHash pwd = liftIO $ do
   hashLength <- Rand.getStdRandom $ Rand.randomR (32, 64)
   hashSaltLength <- Rand.getStdRandom $ Rand.randomR (8, 32)
@@ -98,11 +101,12 @@ data NewUserCredentials = NewUser
   deriving (Show)
 
 insertNewUser ::
-  (MonadDatabase m, MonadIO m) =>
+  (MonadDatabase m, MonadIO m, MonadThrow m, Database Postgres db) =>
   DatabaseEntity Postgres db (TableEntity UserT) ->
   NewUserCredentials ->
   m ()
 insertNewUser table NewUser {..} = do
+  checkIfLoginIsTaken _newUserLogin
   PasswordHash {..} <- generateHash $ T.encodeUtf8 _newUserPassword
   runQuery . runInsert . insert table $
     insertExpressions
@@ -118,6 +122,11 @@ insertNewUser table NewUser {..} = do
             _userIsAllowedToPost = val_ _newUserIsAllowedToPost
           }
       ]
+  where
+    checkIfLoginIsTaken login = do
+      yes <- isUserLoginTaken table login
+      let msg = "Login \"" <> login <> "\" already exists"
+      when yes (throwM $ apiError msg)
 
 isUserLoginTaken ::
   (MonadDatabase m, MonadIO m, Database Postgres db) =>
