@@ -9,7 +9,7 @@ import qualified App.Config as C
 import App.Env (Env (Env, envConfig, envDatabase, envLogger))
 import App.Error
 import App.Monad (AppEnv, runApp)
-import Control.Monad.Catch (SomeException, catch, catchAll)
+import Control.Monad.Catch (MonadThrow, SomeException, catch, catchAll)
 import Control.Monad.IO.Class
 import DB
 import Data.Function ((&))
@@ -66,7 +66,14 @@ usagePrompt =
       "FILE - is a config file."
     ]
 
-addRootUser :: (MonadDatabase m, MonadConfig m, MonadIO m, Log.MonadLog m) => m ()
+addRootUser ::
+  ( MonadDatabase m,
+    MonadConfig m,
+    MonadIO m,
+    Log.MonadLog m,
+    MonadThrow m
+  ) =>
+  m ()
 addRootUser = do
   apiCfg <- apiConfig <$> getConfig
   let rootLogin = rootUser apiCfg
