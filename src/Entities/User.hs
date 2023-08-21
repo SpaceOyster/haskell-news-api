@@ -14,7 +14,7 @@ import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
 import Data.CaseInsensitive as CI
 import Data.Int
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time.Clock
@@ -124,15 +124,7 @@ isUserLoginTaken ::
   DatabaseEntity Postgres db (TableEntity UserT) ->
   T.Text ->
   m Bool
-isUserLoginTaken table login = do
-  maybeUserCount <-
-    runQuery
-      . runSelectReturningOne
-      . select
-      . aggregate_ (\_ -> as_ @Int32 countAll_)
-      . filter_ (\u -> _userLogin u ==. val_ (CI.mk login))
-      $ all_ table
-  pure $ fromMaybe 0 maybeUserCount > 0
+isUserLoginTaken table login = isJust <$> lookupUserLogin table login
 
 lookupUserLogin ::
   (MonadDatabase m, MonadIO m, Database Postgres db) =>
