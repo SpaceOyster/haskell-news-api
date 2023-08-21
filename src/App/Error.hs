@@ -27,3 +27,10 @@ loggerError = LoggerError
 
 apiError :: Text -> AppError
 apiError = APIError
+
+catchRethrowWith ::
+  (MonadCatch m, Exception e1, Exception e2) =>
+  (e1 -> e2) ->
+  m a ->
+  m a
+catchRethrowWith rethrow = flip catch (throwM . rethrow)
