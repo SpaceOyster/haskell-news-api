@@ -32,13 +32,17 @@ import API.Modifiers.Sortable
     Sorting (Ascend),
     SortingRequest (unSortingRequest),
   )
+import App.Error
 import App.Monad
+import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
+import Data.ByteString.Lazy (fromStrict)
 import Data.CaseInsensitive as CI (CI (original), mk)
 import Data.Text
+import Data.Text.Encoding (encodeUtf8)
 import Data.Text.Extended as T
 import Database.Beam
 import Effects.Database as DB (MonadDatabase (..))
@@ -50,9 +54,10 @@ import Servant
     JSON,
     PostCreated,
     ReqBody,
-    ServerError,
+    ServerError (errBody),
     ServerT,
     err401,
+    err500,
     err503,
     throwError,
     (:<|>) (..),
@@ -148,7 +153,9 @@ postCategories ::
   ( DB.MonadDatabase m,
     Log.MonadLog m,
     MonadIO m,
-    MonadError ServerError m
+    MonadError ServerError m,
+    MonadThrow m,
+    MonadCatch m
   ) =>
   User ->
   CategoryJSON ->
@@ -158,8 +165,11 @@ postCategories usr (CategoryJSON cat) =
   where
     table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin usr)
+    dealWithAPIerror e = case e of
+      APIError msg -> throwError $ err500 {errBody = fromStrict $ encodeUtf8 msg}
+      other -> throwM other
     doCreateCategory = do
-      insertNewCategory table cat
+      flip catch dealWithAPIerror $ insertNewCategory table cat
       doCheckIfSuccessfull
     doCheckIfSuccessfull = do
       newCatMaybe <- lookupCategory table $ _categoryName cat
