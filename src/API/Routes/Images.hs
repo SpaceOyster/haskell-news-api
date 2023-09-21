@@ -35,12 +35,18 @@ getImage ::
   Text ->
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
 getImage imageName = do
-  (imageId, imageExt) <- parseImageName imageName
+  (imageName, imageExt) <- parseImageName imageName
   imgContentM <-
     DB.runQuery
       . runSelectReturningOne
       . select
-      $ (_imageContent <$> all_ (_newsImages newsDB))
+      . fmap _imageContent
+      . filter_
+        ( \i ->
+            (_imageFileExtension i ==. val_ imageExt)
+              &&. (_imageName i ==. val_ imageName)
+        )
+      $ all_ (_newsImages newsDB)
   case imgContentM of
     Nothing -> throwError err404
     Just imgContent -> pure . addHeader (contMimeType imageExt) . addHeader (contLength imgContent) $ imgContent
