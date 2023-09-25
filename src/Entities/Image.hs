@@ -13,7 +13,9 @@ import Database.Beam
 
 data ImageT f = Image
   { _imageId :: Columnar f Int32,
+    _imageName :: Columnar f Text,
     _imageFileExtension :: Columnar f Text,
+    _imageMimeType :: Columnar f Text,
     _imageContent :: Columnar f ByteString
   }
   deriving (Generic, Beamable)
