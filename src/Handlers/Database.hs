@@ -17,5 +17,5 @@ type PostgresConfig = ConnectInfo
 newPostgresHandler :: Logger.Handle -> ConnectInfo -> IO Handle
 newPostgresHandler hLog cfg = do
   connection <- connect cfg
-  let logAction = Logger.getLog hLog Log.Debug . T.pack
+  let logAction = Logger.getLog hLog Log.Debug . T.take 1000 . T.pack
   return $ Handle {runDBQuery = runBeamPostgresDebug logAction connection}
