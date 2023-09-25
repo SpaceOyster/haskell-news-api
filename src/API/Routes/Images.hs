@@ -34,8 +34,8 @@ getImage ::
   ) =>
   Text ->
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
-getImage imageName = do
-  (imageName, imageExt) <- parseImageName imageName
+getImage fileName = do
+  (imageName, imageExt) <- parseImageFileName fileName
   imgContentM <-
     DB.runQuery
       . runSelectReturningOne
@@ -44,7 +44,7 @@ getImage imageName = do
       . filter_
         ( \i ->
             (_imageFileExtension i ==. val_ imageExt)
-              &&. (_imageName i ==. val_ imageName)
+              &&. (cast_ (_imageId i) (varchar Nothing) ==. val_ imageName)
         )
       $ all_ (_newsImages newsDB)
   case imgContentM of
