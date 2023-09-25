@@ -38,3 +38,13 @@ deriving instance Show (PrimaryKey ImageT Identity)
 deriving instance Eq (PrimaryKey ImageT Identity)
 
 data FileName = FileName {fnName :: Text, fnExtension :: Text}
+
+data NewImage = NewImage
+  { newImageFileName :: FileName,
+    newImageMimeType :: Text,
+    newImageDataContent :: ByteString
+  }
+
+newImageName = fnName . newImageFileName
+
+newImageDataExtension = fnExtension . newImageFileName
