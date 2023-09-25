@@ -54,15 +54,15 @@ getImage fileName = do
     contMimeType = imageExtensionToMimeType
     contLength = fromIntegral . BS.length
 
-parseImageName ::
+parseImageFileName ::
   ( MonadLog m,
     MonadError ServerError m
   ) =>
   Text ->
   m (Text, Text)
-parseImageName imageName = case T.splitOn "." imageName of
+parseImageFileName fileName = case T.splitOn "." fileName of
   [imageId, imageExt] -> return (imageId, imageExt)
-  _ -> Log.logInfo (T.tshow imageName <> " is invalid image name.") >> throwError err404
+  _ -> Log.logInfo (T.tshow fileName <> " is invalid image name.") >> throwError err404
 
 imageExtensionToMimeType :: Text -> String
 imageExtensionToMimeType imageExt =
