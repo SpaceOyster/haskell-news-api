@@ -71,3 +71,19 @@ insertNewImages table imagesData = do
           _imageContent = val_ newImageDataContent
         }
 
+
+selectImages ::
+  (MonadDatabase m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity ImageT) ->
+  [FileName] ->
+  m [Image]
+selectImages table fns =
+  DB.runQuery
+    . runSelectReturningList
+    . select
+    . filter_
+      ( \i ->
+          (_imageFileExtension i `in_` (val_ . fnExtension <$> fns))
+            &&. (_imageName i `in_` (val_ . fnName <$> fns))
+      )
+    $ all_ table
