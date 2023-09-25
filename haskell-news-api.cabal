@@ -81,6 +81,7 @@ library
     , random
     , servant
     , servant-docs
+    , servant-multipart
     , servant-server
     , text
     , time
@@ -113,6 +114,7 @@ executable haskell-news-api-exe
     , random
     , servant
     , servant-docs
+    , servant-multipart
     , servant-server
     , text
     , time
@@ -146,6 +148,7 @@ test-suite haskell-news-api-test
     , random
     , servant
     , servant-docs
+    , servant-multipart
     , servant-server
     , text
     , time

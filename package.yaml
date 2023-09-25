@@ -41,6 +41,7 @@ dependencies:
 - parsec
 - http-types
 - servant-docs
+- servant-multipart
 
 library:
   source-dirs: src
