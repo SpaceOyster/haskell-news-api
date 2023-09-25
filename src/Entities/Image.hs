@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -10,6 +12,8 @@ import Data.ByteString
 import Data.Int
 import Data.Text
 import Database.Beam
+import Database.Beam.Postgres
+import Effects.Database as DB
 
 data ImageT f = Image
   { _imageId :: Columnar f Int32,
@@ -48,3 +52,22 @@ data NewImage = NewImage
 newImageName = fnName . newImageFileName
 
 newImageDataExtension = fnExtension . newImageFileName
+
+insertNewImages ::
+  (MonadDatabase m) =>
+  DatabaseEntity Postgres db (TableEntity ImageT) ->
+  [NewImage] ->
+  m ()
+insertNewImages table imagesData = do
+  runQuery . runInsert . insert table $
+    insertExpressions (imgDataToExpr <$> imagesData)
+  where
+    imgDataToExpr ni@(NewImage {..}) =
+      Image
+        { _imageId = default_,
+          _imageName = val_ $ newImageName ni,
+          _imageMimeType = val_ newImageMimeType,
+          _imageFileExtension = val_ $ newImageDataExtension ni,
+          _imageContent = val_ newImageDataContent
+        }
+
