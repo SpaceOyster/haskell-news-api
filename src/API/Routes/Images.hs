@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API.Routes.Images where
@@ -9,6 +10,7 @@ import App.Monad
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import DB
+import Data.Aeson as A
 import Data.ByteString as BS
 import Data.Maybe
 import Data.Text.Extended as T
@@ -72,3 +74,14 @@ imageExtensionToMimeType imageExt =
       x -> x
 
 postImage multipartData = return "POST categories endpoint"
+newtype ImageJSON = ImageJSON Image
+
+instance A.ToJSON ImageJSON where
+  toJSON (ImageJSON (Image {..})) =
+    let imgFileName = T.tshow _imageId <> "." <> _imageFileExtension
+     in A.object
+          [ "url" A..= ("/images/" <> imgFileName),
+            "image-file-name" A..= imgFileName,
+            "image-name" A..= _imageName
+          ]
+
