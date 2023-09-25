@@ -36,3 +36,5 @@ type ImageId = PrimaryKey ImageT Identity
 deriving instance Show (PrimaryKey ImageT Identity)
 
 deriving instance Eq (PrimaryKey ImageT Identity)
+
+data FileName = FileName {fnName :: Text, fnExtension :: Text}
