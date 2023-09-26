@@ -42,25 +42,22 @@ getImage ::
   ) =>
   Text ->
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
-getImage fileName = do
-  (imageName, imageExt) <- parseImageFileName fileName
-  imgContentM <-
-    DB.runQuery
-      . runSelectReturningOne
-      . select
-      . fmap _imageContent
-      . filter_
-        ( \i ->
-            (_imageFileExtension i ==. val_ imageExt)
-              &&. (cast_ (_imageId i) (varchar Nothing) ==. val_ imageName)
-        )
-      $ all_ (_newsImages newsDB)
-  case imgContentM of
-    Nothing -> throwError err404
-    Just imgContent -> pure . addHeader (contMimeType imageExt) . addHeader (contLength imgContent) $ imgContent
+getImage fileNameT = do
+  Log.logInfo $ "Image requested: " <> fileNameT
+  fileName <- parseImageFileName fileNameT
+  imgMaybe <- selectImage (_newsImages newsDB) fileName
+  case imgMaybe of
+    Nothing -> doLogNotFound >> throwError err404
+    Just img -> doLogFound >> doReturnImage img
   where
-    contMimeType = imageExtensionToMimeType
     contLength = fromIntegral . BS.length
+    doReturnImage Image {..} =
+      pure
+        . addHeader (T.unpack _imageMimeType)
+        . addHeader (contLength _imageContent)
+        $ _imageContent
+    doLogNotFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" not found"
+    doLogFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" found and returned"
 
 parseImageFileName ::
   ( MonadLog m,
