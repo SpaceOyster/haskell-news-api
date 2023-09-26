@@ -67,9 +67,9 @@ parseImageFileName ::
     MonadError ServerError m
   ) =>
   Text ->
-  m (Text, Text)
+  m FileName
 parseImageFileName fileName = case T.splitOn "." fileName of
-  [imageId, imageExt] -> return (imageId, imageExt)
+  [imageId, imageExt] -> return $ FileName imageId imageExt
   _ -> Log.logInfo (T.tshow fileName <> " is invalid image name.") >> throwError err404
 
 imageExtensionToMimeType :: Text -> String
