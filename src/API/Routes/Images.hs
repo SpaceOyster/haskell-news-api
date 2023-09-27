@@ -78,8 +78,8 @@ parseFileName fileName = case T.splitOn "." fileName of
   [imageId, imageExt] -> return $ FileName imageId imageExt
   _ -> throwM $ apiError (T.tshow fileName <> " is invalid file name.")
 
-fileToImageData :: (MonadThrow m) => FileData Mem -> m NewImage
-fileToImageData file = do
+fileToNewImage :: (MonadThrow m) => FileData Mem -> m NewImage
+fileToNewImage file = do
   let fileName = fdFileName file
       newImageDataContent = LBS.toStrict $ fdPayload file
       newImageMimeType = fdFileCType file
@@ -103,7 +103,7 @@ postImage usr multipartData =
     creatorLogin = CI.original (_userLogin usr)
     doCreateImage = do
       let files = MP.files multipartData
-      newImgsData <- forM files fileToImageData
+      newImgsData <- forM files fileToNewImage
       insertNewImages (_newsImages newsDB) newImgsData
       imgs <- selectImages (_newsImages newsDB) . fmap newImageFileName $ newImgsData
       return $ ImageJSON <$> imgs
