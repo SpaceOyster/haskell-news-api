@@ -73,13 +73,18 @@ instance A.ToJSON ImageJSON where
             "image-name" A..= _imageName
           ]
 
-parseFileName ::
-  (MonadThrow m) =>
-  Text ->
-  m FileName
+parseFileName :: (MonadThrow m) => Text -> m FileName
 parseFileName fileName = case T.splitOn "." fileName of
   [imageId, imageExt] -> return $ FileName imageId imageExt
   _ -> throwM $ apiError (T.tshow fileName <> " is invalid file name.")
+
+fileToImageData :: (MonadThrow m) => FileData Mem -> m NewImage
+fileToImageData file = do
+  let fileName = fdFileName file
+      newImageDataContent = LBS.toStrict $ fdPayload file
+      newImageMimeType = fdFileCType file
+  newImageFileName <- parseFileName fileName
+  return $ NewImage {..}
 
 postImage ::
   ( Monad m,
@@ -102,14 +107,6 @@ postImage usr multipartData =
       insertNewImages (_newsImages newsDB) newImgsData
       imgs <- selectImages (_newsImages newsDB) . fmap newImageFileName $ newImgsData
       return $ ImageJSON <$> imgs
-    fileToImageData file = do
-      let fileName = fdFileName file
-          newImageDataContent = LBS.toStrict $ fdPayload file
-          newImageMimeType = fdFileCType file
-      newImageFileName <- parseFileName fileName
-      Log.logInfo $ "Form: " <> fdInputName file <> " Got file: " <> fileName
-      let newImageFileName = FileName {..}
-      return $ NewImage {..}
     doOnUnauthorised = doLogUnauthorised >> throwError err401
     doLogDBError fname =
       Log.logWarning $
