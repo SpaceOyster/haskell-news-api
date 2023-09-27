@@ -8,8 +8,10 @@
 module API.Routes.Images where
 
 import API.Modifiers.Protected (Protected)
+import App.Error (apiError)
 import App.Monad
 import Control.Monad
+import Control.Monad.Catch (MonadCatch, MonadThrow, throwM)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import DB
@@ -38,13 +40,14 @@ getImage ::
   ( DB.MonadDatabase m,
     Log.MonadLog m,
     MonadIO m,
-    MonadError ServerError m
+    MonadError ServerError m,
+    MonadCatch m
   ) =>
   Text ->
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
 getImage fileNameT = do
   Log.logInfo $ "Image requested: " <> fileNameT
-  fileName <- parseImageFileName fileNameT
+  fileName <- parseFileName fileNameT
   imgMaybe <- selectImage (_newsImages newsDB) fileName
   case imgMaybe of
     Nothing -> doLogNotFound >> throwError err404
@@ -59,16 +62,6 @@ getImage fileNameT = do
     doLogNotFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" not found"
     doLogFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" found and returned"
 
-parseImageFileName ::
-  ( MonadLog m,
-    MonadError ServerError m
-  ) =>
-  Text ->
-  m FileName
-parseImageFileName fileName = case T.splitOn "." fileName of
-  [imageId, imageExt] -> return $ FileName imageId imageExt
-  _ -> Log.logInfo (T.tshow fileName <> " is invalid image name.") >> throwError err404
-
 newtype ImageJSON = ImageJSON Image
 
 instance A.ToJSON ImageJSON where
@@ -80,11 +73,20 @@ instance A.ToJSON ImageJSON where
             "image-name" A..= _imageName
           ]
 
+parseFileName ::
+  (MonadThrow m) =>
+  Text ->
+  m FileName
+parseFileName fileName = case T.splitOn "." fileName of
+  [imageId, imageExt] -> return $ FileName imageId imageExt
+  _ -> throwM $ apiError (T.tshow fileName <> " is invalid file name.")
+
 postImage ::
   ( Monad m,
     MonadDatabase m,
     MonadLog m,
-    MonadError ServerError m
+    MonadError ServerError m,
+    MonadCatch m
   ) =>
   User ->
   MultipartData Mem ->
@@ -104,7 +106,7 @@ postImage usr multipartData =
       let fileName = fdFileName file
           newImageDataContent = LBS.toStrict $ fdPayload file
           newImageMimeType = fdFileCType file
-      (fnName, fnExtension) <- parseImageFileName fileName
+      newImageFileName <- parseFileName fileName
       Log.logInfo $ "Form: " <> fdInputName file <> " Got file: " <> fileName
       let newImageFileName = FileName {..}
       return $ NewImage {..}
