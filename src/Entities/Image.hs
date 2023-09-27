@@ -49,8 +49,10 @@ data NewImage = NewImage
     newImageDataContent :: ByteString
   }
 
+newImageName :: NewImage -> Text
 newImageName = fnName . newImageFileName
 
+newImageDataExtension :: NewImage -> Text
 newImageDataExtension = fnExtension . newImageFileName
 
 insertNewImages ::
