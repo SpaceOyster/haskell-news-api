@@ -69,13 +69,6 @@ parseImageFileName fileName = case T.splitOn "." fileName of
   [imageId, imageExt] -> return $ FileName imageId imageExt
   _ -> Log.logInfo (T.tshow fileName <> " is invalid image name.") >> throwError err404
 
-imageExtensionToMimeType :: Text -> String
-imageExtensionToMimeType imageExt =
-  T.unpack $
-    "image/" <> case imageExt of
-      "jpg" -> "jpeg"
-      x -> x
-
 newtype ImageJSON = ImageJSON Image
 
 instance A.ToJSON ImageJSON where
