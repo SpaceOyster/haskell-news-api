@@ -47,7 +47,7 @@ getImage ::
   ) =>
   Text ->
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
-getImage fileNameT = do
+getImage fileNameT = flip catch dealWithAPIError $ do
   Log.logInfo $ "Image requested: " <> fileNameT
   fileName <- parseFileName fileNameT
   imgMaybe <- selectImage (_newsImages newsDB) fileName
@@ -61,6 +61,9 @@ getImage fileNameT = do
         . addHeader (T.unpack _imageMimeType)
         . addHeader (contLength _imageContent)
         $ _imageContent
+    dealWithAPIError e = case e of
+      a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
+      other -> throwM other
     doLogNotFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" not found"
     doLogFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" found and returned"
 
@@ -77,7 +80,7 @@ instance A.ToJSON ImageJSON where
 
 parseFileName :: (MonadThrow m) => Text -> m FileName
 parseFileName fileName = case T.splitOn "." fileName of
-  [imageId, imageExt] -> return $ FileName imageId imageExt
+  [imageId, imageExt] -> pure $ FileName imageId imageExt
   _ -> throwM $ apiError (T.tshow fileName <> " is invalid file name.")
 
 fileToNewImage :: (MonadThrow m) => FileData Mem -> m NewImage
@@ -86,7 +89,7 @@ fileToNewImage file = do
       newImageDataContent = LBS.toStrict $ fdPayload file
       newImageMimeType = fdFileCType file
   newImageFileName <- parseFileName fileName
-  return $ NewImage {..}
+  pure $ NewImage {..}
 
 postImage ::
   ( Monad m,

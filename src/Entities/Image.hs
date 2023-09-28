@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -10,7 +11,7 @@ module Entities.Image where
 
 import Data.ByteString
 import Data.Int
-import Data.Text
+import Data.Text as T
 import Database.Beam
 import Database.Beam.Postgres
 import Effects.Database as DB
@@ -42,6 +43,9 @@ deriving instance Show (PrimaryKey ImageT Identity)
 deriving instance Eq (PrimaryKey ImageT Identity)
 
 data FileName = FileName {fnName :: Text, fnExtension :: Text}
+
+instance Show FileName where
+  show fn = T.unpack $ fnName fn <> "." <> fnExtension fn
 
 data NewImage = NewImage
   { newImageFileName :: FileName,
