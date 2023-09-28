@@ -8,18 +8,20 @@
 module API.Routes.Images where
 
 import API.Modifiers.Protected (Protected)
-import App.Error (apiError)
+import App.Error (AppError (APIError), apiError)
 import App.Monad
 import Control.Monad
-import Control.Monad.Catch (MonadCatch, MonadThrow, throwM)
+import Control.Monad.Catch (MonadCatch (catch), MonadThrow, throwM)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
-import Data.ByteString as BS
-import Data.ByteString.Lazy as LBS (toStrict)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS (fromStrict, toStrict)
 import qualified Data.CaseInsensitive as CI
-import Data.Text.Extended as T
+import Data.Text (Text)
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Extended as T
 import Database.Beam
 import Effects.Database as DB
 import Effects.Log as Log
@@ -96,21 +98,32 @@ postImage ::
   User ->
   MultipartData Mem ->
   m [ImageJSON]
-postImage usr multipartData =
-  if _userIsAdmin usr then doCreateImage else doOnUnauthorised
+postImage creator multipartData =
+  if _userIsAdmin creator then doCreateImage else doOnUnauthorised
   where
     table = _newsCategories newsDB
-    creatorLogin = CI.original (_userLogin usr)
-    doCreateImage = do
+    creatorLogin = CI.original (_userLogin creator)
+    doCreateImage = flip catch dealWithAPIError $ do
       let files = MP.files multipartData
       newImgsData <- forM files fileToNewImage
       insertNewImages (_newsImages newsDB) newImgsData
-      imgs <- selectImages (_newsImages newsDB) . fmap newImageFileName $ newImgsData
-      return $ ImageJSON <$> imgs
+      imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgsData
+      doCheckForSuccess newImgsData
     doOnUnauthorised = doLogUnauthorised >> throwError err401
-    doLogDBError fname =
+    dealWithAPIError e = case e of
+      a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
+      other -> throwM other
+    doCheckForSuccess newImgs = do
+      imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgs
+      if length imgs == length newImgs
+        then doLogSuccess newImgs >> pure (ImageJSON <$> imgs)
+        else doLogDBError newImgs >> throwError err503
+    doLogDBError newImgs =
       Log.logWarning $
-        "Image \"" <> fname <> "\" was not added to Database"
+        "Some Images of " <> T.tshow (newImageFileName <$> newImgs) <> " were not added to Database"
     doLogUnauthorised =
       Log.logWarning $
         "User \"" <> creatorLogin <> "\" is not authorised to create a new image"
+    doLogSuccess newImgs =
+      Log.logInfo $
+        "User \"" <> creatorLogin <> "\" created new images: " <> T.tshow (newImageFileName <$> newImgs)
