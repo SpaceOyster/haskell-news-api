@@ -7,7 +7,7 @@
 
 module API.Routes.Images where
 
-import API.Modifiers.Protected (Protected)
+import API.Modifiers.Protected (AuthorUser, Protected)
 import App.Error (AppError (APIError), apiError)
 import App.Monad
 import Control.Monad
@@ -32,7 +32,7 @@ import Servant.Multipart as MP
 
 type ImagesAPI =
   Capture "imageName" Text :> Get '[OctetStream] (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
-    :<|> Protected :> MultipartForm Mem (MultipartData Mem) :> PostCreated '[JSON] [ImageJSON]
+    :<|> Protected AuthorUser :> MultipartForm Mem (MultipartData Mem) :> PostCreated '[JSON] [ImageJSON]
 
 images :: ServerT ImagesAPI App
 images = getImage :<|> postImage
@@ -102,7 +102,7 @@ postImage ::
   MultipartData Mem ->
   m [ImageJSON]
 postImage creator multipartData =
-  if _userIsAdmin creator then doCreateImage else doOnUnauthorised
+  doCreateImage
   where
     table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin creator)
@@ -112,7 +112,6 @@ postImage creator multipartData =
       insertNewImages (_newsImages newsDB) newImgsData
       imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgsData
       doCheckForSuccess newImgsData
-    doOnUnauthorised = doLogUnauthorised >> throwError err401
     dealWithAPIError e = case e of
       a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
@@ -124,9 +123,6 @@ postImage creator multipartData =
     doLogDBError newImgs =
       Log.logWarning $
         "Some Images of " <> T.tshow (newImageFileName <$> newImgs) <> " were not added to Database"
-    doLogUnauthorised =
-      Log.logWarning $
-        "User \"" <> creatorLogin <> "\" is not authorised to create a new image"
     doLogSuccess newImgs =
       Log.logInfo $
         "User \"" <> creatorLogin <> "\" created new images: " <> T.tshow (newImageFileName <$> newImgs)
