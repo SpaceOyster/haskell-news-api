@@ -159,17 +159,15 @@ postCategories ::
   User ->
   CategoryJSON ->
   m CategoryJSON
-postCategories usr (CategoryJSON cat) =
-  doCreateCategory
+postCategories usr (CategoryJSON cat) = do
+  flip catch dealWithAPIerror $ insertNewCategory table cat
+  doCheckIfSuccessfull
   where
     table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin usr)
     dealWithAPIerror e = case e of
       APIError msg -> throwError $ err500 {errBody = fromStrict $ encodeUtf8 msg}
       other -> throwM other
-    doCreateCategory = do
-      flip catch dealWithAPIerror $ insertNewCategory table cat
-      doCheckIfSuccessfull
     doCheckIfSuccessfull = do
       newCatMaybe <- lookupCategory table $ _categoryName cat
       case newCatMaybe of
