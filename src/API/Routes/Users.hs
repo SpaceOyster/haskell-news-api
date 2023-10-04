@@ -92,7 +92,6 @@ import Servant
     ReqBody,
     ServerError (errBody),
     ServerT,
-    err401,
     err500,
     err503,
     throwError,

@@ -13,10 +13,8 @@ import API.Routes.Users
 import App.Config
 import App.Env
 import App.Monad
-import Entities.User
 import Network.Wai
 import Servant
-import Servant.Server.Experimental.Auth
 
 type AppAPI =
   "categories" :> CategoriesAPI

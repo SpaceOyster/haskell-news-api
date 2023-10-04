@@ -27,12 +27,8 @@ module API.Modifiers.Sortable
 where
 
 import API.Modifiers.Internal
-  ( HasToBeInList,
-    ListOfTags,
-    ValidNamesList (),
-    reifySymbolsList,
+  ( ListOfTags,
   )
-import qualified API.Modifiers.Internal as Internal
 import API.Modifiers.Internal.PolyKinds as Internal
 import Data.Bifunctor (first)
 import Data.Maybe (fromMaybe)

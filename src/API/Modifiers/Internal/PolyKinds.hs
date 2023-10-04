@@ -16,7 +16,7 @@ import qualified Data.CaseInsensitive as CI
 import qualified Data.Text.Extended as T
 import Data.Type.Bool (If, type (&&))
 import Data.Typeable (Proxy (..))
-import GHC.Base (Constraint, Symbol, Type)
+import GHC.Base (Constraint, Symbol)
 import GHC.TypeLits.Extended
   ( ErrorMessage (ShowType, Text, (:<>:)),
     KnownSymbol,

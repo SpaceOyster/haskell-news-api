@@ -9,7 +9,7 @@
 module Entities.Category where
 
 import App.Error (apiError)
-import Control.Monad (forM_, unless, when, (>=>))
+import Control.Monad (forM_, unless, when)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.CaseInsensitive as CI
 import Data.Maybe (isJust)

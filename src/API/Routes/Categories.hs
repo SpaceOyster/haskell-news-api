@@ -56,14 +56,13 @@ import Servant
     ReqBody,
     ServerError (errBody),
     ServerT,
-    err401,
     err500,
     err503,
     throwError,
     (:<|>) (..),
     (:>),
   )
-import Servant.Docs as Docs (ToSample (toSamples), singleSample)
+import Servant.Docs as Docs (ToSample (toSamples))
 
 type CategoriesAPI =
   Paginated

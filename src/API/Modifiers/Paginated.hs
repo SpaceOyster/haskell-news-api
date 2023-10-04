@@ -12,7 +12,6 @@
 
 module API.Modifiers.Paginated where
 
-import qualified Data.Configurator.Types as Conf
 import Data.Maybe
 import Data.Typeable
 import Servant

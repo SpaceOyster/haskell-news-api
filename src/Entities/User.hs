@@ -17,7 +17,7 @@ import qualified Crypto.Random as CRand
 import qualified Data.ByteString as BS
 import Data.CaseInsensitive as CI
 import Data.Int
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time.Clock
