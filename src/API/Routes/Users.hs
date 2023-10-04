@@ -225,18 +225,16 @@ addNewUser ::
   User ->
   NewUserJSON ->
   m UserJSON
-addNewUser usr (NewUserJSON newUser) =
-  doCreateUser
+addNewUser creator (NewUserJSON newUser) = do
+  flip catch dealWithAPIerror $ insertNewUser table newUser
+  doCheckIfSuccessfull
   where
     table = _newsUsers newsDB
     newUserLogin = _newUserLogin newUser
-    creatorLogin = CI.original (_userLogin usr)
+    creatorLogin = CI.original (_userLogin creator)
     dealWithAPIerror e = case e of
       APIError msg -> throwError $ err500 {errBody = fromStrict $ encodeUtf8 msg}
       other -> throwM other
-    doCreateUser = do
-      flip catch dealWithAPIerror $ insertNewUser table newUser
-      doCheckIfSuccessfull
     doCheckIfSuccessfull = do
       newUserMaybe <- lookupUserLogin table newUserLogin
       case newUserMaybe of
