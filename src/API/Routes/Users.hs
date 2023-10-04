@@ -26,7 +26,7 @@ import API.Modifiers.Filterable
     Tagged (Tagged),
   )
 import API.Modifiers.Paginated (Paginated, Pagination (..))
-import API.Modifiers.Protected (Protected)
+import API.Modifiers.Protected (AdminUser, Protected)
 import API.Modifiers.Sortable
   ( SortableBy,
     Sorting (Ascend),
@@ -119,7 +119,7 @@ type UsersAPI =
             'Tagged "is-allowed-to-post" Bool
           ]
     :> Get '[JSON] [UserJSON]
-    :<|> Protected :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] UserJSON
+    :<|> Protected AdminUser :> ReqBody '[JSON] NewUserJSON :> PostCreated '[JSON] UserJSON
 
 users :: ServerT UsersAPI App
 users = listUsers :<|> addNewUser
@@ -227,7 +227,7 @@ addNewUser ::
   NewUserJSON ->
   m UserJSON
 addNewUser usr (NewUserJSON newUser) =
-  if _userIsAdmin usr then doCreateUser else doOnUnauthorised
+  doCreateUser
   where
     table = _newsUsers newsDB
     newUserLogin = _newUserLogin newUser
@@ -238,7 +238,6 @@ addNewUser usr (NewUserJSON newUser) =
     doCreateUser = do
       flip catch dealWithAPIerror $ insertNewUser table newUser
       doCheckIfSuccessfull
-    doOnUnauthorised = doLogUnauthorised >> throwError err401
     doCheckIfSuccessfull = do
       newUserMaybe <- lookupUserLogin table newUserLogin
       case newUserMaybe of
@@ -247,9 +246,6 @@ addNewUser usr (NewUserJSON newUser) =
     doLogSuccess =
       Log.logInfo $
         "User \"" <> creatorLogin <> "\" created new user :\"" <> newUserLogin <> "\""
-    doLogUnauthorised =
-      Log.logWarning $
-        "User \"" <> creatorLogin <> "\" is not authorised to create a new user"
     doLogDBError =
       Log.logWarning $
         "User \"" <> newUserLogin <> "\" was not added to Database"
