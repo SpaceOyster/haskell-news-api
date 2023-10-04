@@ -26,7 +26,7 @@ import API.Modifiers.Filterable
     Tagged (Tagged),
   )
 import API.Modifiers.Paginated (Paginated, Pagination (..))
-import API.Modifiers.Protected (Protected)
+import API.Modifiers.Protected (AdminUser, Protected)
 import API.Modifiers.Sortable
   ( SortableBy,
     Sorting (Ascend),
@@ -73,7 +73,7 @@ type CategoriesAPI =
             'Tagged "parent" (CI T.Text)
           ]
     :> Get '[JSON] [CategoryJSON]
-    :<|> Protected :> ReqBody '[JSON] CategoryJSON :> PostCreated '[JSON] CategoryJSON
+    :<|> Protected AdminUser :> ReqBody '[JSON] CategoryJSON :> PostCreated '[JSON] CategoryJSON
 
 newtype CategoryJSON = CategoryJSON Category
 
@@ -161,7 +161,7 @@ postCategories ::
   CategoryJSON ->
   m CategoryJSON
 postCategories usr (CategoryJSON cat) =
-  if _userIsAdmin usr then doCreateCategory else doOnUnauthorised
+  doCreateCategory
   where
     table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin usr)
@@ -176,13 +176,9 @@ postCategories usr (CategoryJSON cat) =
       case newCatMaybe of
         Nothing -> doLogDBError >> throwError err503
         Just c -> doLogSuccess >> return (CategoryJSON c)
-    doOnUnauthorised = doLogUnauthorised >> throwError err401
     doLogSuccess =
       Log.logInfo $
         "User \"" <> creatorLogin <> "\" created new category :\"" <> T.tshow cat <> "\""
-    doLogUnauthorised =
-      Log.logWarning $
-        "User \"" <> creatorLogin <> "\" is not authorised to create a new category"
     doLogDBError =
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
