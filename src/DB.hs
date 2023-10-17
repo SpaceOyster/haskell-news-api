@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module DB where
 
-import Data.Text as T
 import Database.Beam
 import Entities.Category
 import Entities.Image
@@ -27,6 +27,18 @@ newsDB =
           modifyTableFields
             tableModification
               { _categoryParentCategory =
-                  CategoryId $ fieldNamed (T.pack "parent_category")
+                  CategoryId $ fieldNamed "parent_category"
+              },
+        _newsArticles =
+          modifyTableFields
+            tableModification
+              { _articleAuthor = UserId $ fieldNamed "author",
+                _articleCategory = CategoryId $ fieldNamed "category"
+              },
+        _newsArticlesImages =
+          modifyTableFields
+            tableModification
+              { _articleImageArticleId = ArticleId $ fieldNamed "article_id",
+                _articleImageImageId = ImageId $ fieldNamed "image_id"
               }
       }
