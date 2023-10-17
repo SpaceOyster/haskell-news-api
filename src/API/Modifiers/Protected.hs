@@ -11,16 +11,11 @@
 module API.Modifiers.Protected where
 
 import App.Monad
-import Control.Monad (when)
-import Control.Monad.Except (MonadError)
-import Control.Monad.RWS (Any (Any))
 import qualified DB
-import Data.CaseInsensitive as CI (mk, original)
+import Data.CaseInsensitive as CI (original)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Extended as T
-import Database.Beam
-import qualified Effects.Database as DB
-import qualified Effects.Log as Log (MonadLog, logInfo, logWarning)
+import qualified Effects.Log as Log (logInfo, logWarning)
 import Entities.User
 import GHC.TypeLits
 import Network.Wai
@@ -28,7 +23,6 @@ import Servant
 import Servant.Docs.Internal as Docs
 import Servant.Server.Experimental.Auth
 import Servant.Server.Internal.BasicAuth
-import Servant.Server.Internal.DelayedIO (delayedFailFatal)
 
 type instance AuthServerData (AuthProtect "basic-auth") = User
 
