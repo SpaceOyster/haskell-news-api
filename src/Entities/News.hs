@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -42,3 +44,33 @@ type ArticleId = PrimaryKey ArticleT Identity
 deriving instance Show (PrimaryKey ArticleT Identity)
 
 deriving instance Eq (PrimaryKey ArticleT Identity)
+
+data ArticleImageT f = ArticleImage
+  { _articleImageArticleId :: PrimaryKey ArticleT f,
+    _articleImageImageId :: PrimaryKey ImageT f
+  }
+  deriving (Generic, Beamable)
+
+type ArticleImage = ArticleImageT Identity
+
+deriving instance Show ArticleImage
+
+deriving instance Eq ArticleImage
+
+instance Table ArticleImageT where
+  data PrimaryKey ArticleImageT f = ArticleImageId (PrimaryKey ArticleT f) (PrimaryKey ImageT f) deriving (Generic, Beamable)
+  primaryKey = ArticleImageId <$> _articleImageArticleId <*> _articleImageImageId
+
+type ArticleImageId = PrimaryKey ArticleImageT Identity
+
+deriving instance Show (PrimaryKey ArticleImageT Identity)
+
+deriving instance Eq (PrimaryKey ArticleImageT Identity)
+
+articleImageReletaionship ::
+  (Database be db) =>
+  DatabaseEntity be db (TableEntity ArticleImageT) ->
+  ManyToMany be db ArticleT ImageT
+articleImageReletaionship articleImageT =
+  manyToMany_ articleImageT _articleImageArticleId _articleImageImageId
+
