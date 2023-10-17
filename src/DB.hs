@@ -14,7 +14,8 @@ data NewsDB f = NewsDB
   { _newsImages :: f (TableEntity ImageT),
     _newsUsers :: f (TableEntity UserT),
     _newsCategories :: f (TableEntity CategoryT),
-    _newsArticles :: f (TableEntity ArticleT)
+    _newsArticles :: f (TableEntity ArticleT),
+    _newsArticlesImages :: f (TableEntity ArticleImageT)
   }
   deriving (Generic, Database be)
 
