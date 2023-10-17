@@ -49,6 +49,7 @@ deriving instance Show (PrimaryKey ImageT Identity)
 deriving instance Eq (PrimaryKey ImageT Identity)
 
 data FileName = FileName {fnName :: Text, fnExtension :: Text}
+  deriving (Eq)
 
 instance Show FileName where
   show fn = T.unpack $ fnName fn <> "." <> fnExtension fn
