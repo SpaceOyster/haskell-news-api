@@ -11,7 +11,7 @@ module Entities.Image where
 
 import Data.ByteString
 import Data.Int
-import Data.Text as T
+import Data.Text.Extended as T
 import Database.Beam
 import Database.Beam.Postgres
 import Effects.Database as DB
@@ -24,6 +24,12 @@ data ImageT f = Image
     _imageContent :: Columnar f ByteString
   }
   deriving (Generic, Beamable)
+
+_imageFileName :: Image -> FileName
+_imageFileName Image {..} = FileName _imageName _imageFileExtension
+
+_imageIdFileName :: Image -> FileName
+_imageIdFileName Image {..} = FileName (T.tshow _imageId) _imageFileExtension
 
 type Image = ImageT Identity
 
