@@ -1,0 +1,3 @@
+ALTER TABLE IF EXISTS articles
+    ALTER is_published SET DEFAULT FALSE;
+
