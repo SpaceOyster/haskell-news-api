@@ -19,10 +19,12 @@ import Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS (fromStrict, toStrict)
 import qualified Data.CaseInsensitive as CI
+import Data.List ((\\))
 import Data.Text (Text)
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Extended as T
 import Database.Beam
+import Database.Beam.Postgres
 import Effects.Database as DB
 import Effects.Log as Log
 import Entities.Image
@@ -102,27 +104,27 @@ postImage ::
   MultipartData Mem ->
   m [ImageJSON]
 postImage creator multipartData =
-  doCreateImage
+  flip catch dealWithAPIError $ do
+    let files = MP.files multipartData
+    newImgsData <- forM files fileToNewImage
+    insertNewImages (_newsImages newsDB) newImgsData
+    imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgsData
+    doCheckForSuccess newImgsData
   where
     table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin creator)
-    doCreateImage = flip catch dealWithAPIError $ do
-      let files = MP.files multipartData
-      newImgsData <- forM files fileToNewImage
-      insertNewImages (_newsImages newsDB) newImgsData
-      imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgsData
-      doCheckForSuccess newImgsData
     dealWithAPIError e = case e of
       a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
     doCheckForSuccess newImgs = do
       imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgs
+      let unsavedImageFiles = fmap _imageFileName imgs \\ fmap newImageFileName newImgs
       if length imgs == length newImgs
         then doLogSuccess newImgs >> pure (ImageJSON <$> imgs)
-        else doLogDBError newImgs >> throwError err503
-    doLogDBError newImgs =
+        else doLogDBError unsavedImageFiles >> throwError err503
+    doLogDBError unsaved =
       Log.logWarning $
-        "Some Images of " <> T.tshow (newImageFileName <$> newImgs) <> " were not added to Database"
+        "Some Images of " <> T.tshow unsaved <> " were not added to Database"
     doLogSuccess newImgs =
       Log.logInfo $
         "User \"" <> creatorLogin <> "\" created new images: " <> T.tshow (newImageFileName <$> newImgs)
