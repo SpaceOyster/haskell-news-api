@@ -47,6 +47,15 @@ data ArticleJSON = ArticleJSON
   }
   deriving (Show)
 
+data ArticlePostJSON = ArticlePostJSON
+  { _articlePostJSONId :: Maybe Int32,
+    _articlePostJSONTitle :: Text,
+    _articlePostJSONCategory :: Maybe Text,
+    _articlePostJSONBody :: Text,
+    _articlePostJSONImages :: [FileNameJSON],
+    _articlePostJSONIsPublished :: Bool
+  }
+  deriving (Show)
 
 instance A.ToJSON ArticleJSON where
   toJSON (ArticleJSON {..}) =
@@ -60,6 +69,17 @@ instance A.ToJSON ArticleJSON where
         "images" A..= _articleJSONImages,
         "is-published" A..= _articleJSONIsPublished
       ]
+
+instance A.FromJSON ArticlePostJSON where
+  parseJSON = A.withObject "ArticleJSON" $ \o -> do
+    _articlePostJSONId <- o A..:? "id"
+    _articlePostJSONTitle <- o A..: "title"
+    _articlePostJSONCategory <- o A..:? "category"
+    _articlePostJSONBody <- o A..: "body"
+    _articlePostJSONImages <- o A..:? "images" A..!= []
+    _articlePostJSONIsPublished <- o A..:? "is-published" A..!= False
+    pure ArticlePostJSON {..}
+
 newtype FileNameJSON = FileNameJSON {unFileNameJSON :: FileName}
   deriving (Show)
 
