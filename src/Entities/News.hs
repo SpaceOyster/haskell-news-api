@@ -12,6 +12,7 @@ import Data.Int
 import Data.Text
 import Data.Time.Clock
 import Database.Beam
+import Database.Beam.Postgres
 import Entities.Category
 import Entities.Image
 import Entities.User
@@ -74,3 +75,14 @@ articleImageReletaionship ::
 articleImageReletaionship articleImageT =
   manyToMany_ articleImageT _articleImageArticleId _articleImageImageId
 
+selectArticleWithAuthor ::
+  (MonadBeam Postgres m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity ArticleT) ->
+  DatabaseEntity Postgres db (TableEntity UserT) ->
+  ArticleId ->
+  m (Maybe (Article, User))
+selectArticleWithAuthor articleT usersT articleId =
+  runSelectReturningOne . select $ do
+    article <- filter_ (\a -> pk a ==. val_ articleId) (all_ articleT)
+    user <- related_ usersT (_articleAuthor article)
+    pure (article, user)
