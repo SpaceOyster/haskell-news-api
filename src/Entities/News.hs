@@ -86,3 +86,19 @@ selectArticleWithAuthor articleT usersT articleId =
     article <- filter_ (\a -> pk a ==. val_ articleId) (all_ articleT)
     user <- related_ usersT (_articleAuthor article)
     pure (article, user)
+
+selectArticleImages ::
+  (MonadBeam Postgres m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity ArticleT) ->
+  DatabaseEntity Postgres db (TableEntity ImageT) ->
+  DatabaseEntity Postgres db (TableEntity ArticleImageT) ->
+  Int32 ->
+  m [Image]
+selectArticleImages articleT imageT articleImageT articleId =
+  fmap (fmap snd)
+    . runSelectReturningList
+    . select
+    $ articleImageReletaionship
+      articleImageT
+      (filter_ (\a -> _articleId a ==. val_ articleId) (all_ articleT))
+      (all_ imageT)
