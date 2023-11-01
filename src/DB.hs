@@ -27,18 +27,18 @@ newsDB =
           modifyTableFields
             tableModification
               { _categoryParentCategory =
-                  CategoryId $ fieldNamed "parent_category"
+                  CategoryId "parent_category"
               },
         _newsArticles =
           modifyTableFields
             tableModification
-              { _articleAuthor = UserId $ fieldNamed "author",
-                _articleCategory = CategoryId $ fieldNamed "category"
+              { _articleAuthor = UserId "author",
+                _articleCategory = CategoryId "category"
               },
         _newsArticlesImages =
           modifyTableFields
             tableModification
-              { _articleImageArticleId = ArticleId $ fieldNamed "article_id",
-                _articleImageImageId = ImageId $ fieldNamed "image_id"
+              { _articleImageArticleId = ArticleId "article_id",
+                _articleImageImageId = ImageId "image_id"
               }
       }
