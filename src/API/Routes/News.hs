@@ -89,6 +89,19 @@ instance A.ToJSON FileNameJSON where
 instance A.FromJSON FileNameJSON where
   parseJSON = A.withText "FileNameJSON" (fmap FileNameJSON . parseFileName)
 
+articleToJSON :: Article -> User -> [FileName] -> ArticleJSON
+articleToJSON Article {..} u imgs =
+  ArticleJSON
+    { _articleJSONId = _articleId,
+      _articleJSONTitle = _articleTitle,
+      _articleJSONCreatedAt = _articleCreatedAt,
+      _articleJSONAuthorName = _userName u,
+      _articleJSONCategory = CI.original <$> unCategoryId _articleCategory,
+      _articleJSONBody = _articleBody,
+      _articleJSONImages = FileNameJSON <$> imgs,
+      _articleJSONIsPublished = _articleIsPublished
+    }
+
 getArticle ::
   ( MonadDatabase m,
     MonadIO m,
