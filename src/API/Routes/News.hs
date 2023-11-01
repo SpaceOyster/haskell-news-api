@@ -7,6 +7,8 @@
 
 module API.Routes.News where
 
+import API.Modifiers.Protected
+import App.Error (AppError (APIError))
 import App.Monad
 import Control.Monad.Catch (MonadCatch (catch), MonadThrow, throwM)
 import Control.Monad.Except (MonadError)
@@ -30,7 +32,7 @@ import Servant
 
 type NewsAPI =
   Capture "id" Int32 :> Get '[JSON] ArticleJSON
-    :<|> Protected AuthorUser :> ReqBody '[JSON] ArticleJSON :> PostCreated '[JSON] ArticleJSON
+    :<|> Protected AuthorUser :> ReqBody '[JSON] ArticlePostJSON :> PostCreated '[JSON] ArticleJSON
 
 news :: ServerT NewsAPI App
 news = getArticle :<|> postArticle
@@ -141,7 +143,40 @@ getArticle articleId = do
       fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT articleId
     doLogNotFound = Log.logInfo $ "Article " <> T.tshow articleId <> " not found"
 
-postArticle = undefined
+postArticle ::
+  ( MonadDatabase m,
+    MonadIO m,
+    MonadCatch m,
+    MonadThrow m,
+    MonadError ServerError m,
+    MonadLog m
+  ) =>
+  User ->
+  ArticlePostJSON ->
+  m ArticleJSON
+postArticle creator a@(ArticlePostJSON {..}) =
+  flip catch dealWithAPIError $ do
+    doLogRequest
+    aM <- DB.runQuery $ insertArticle creator a
+    case aM of
+      Just art -> doLogSuccess art >> doOnSuccess art
+      Nothing -> doLogFail >> throwError err500
+  where
+    articleT = _newsArticles newsDB
+    imageT = _newsImages newsDB
+    articleImageT = _newsArticlesImages newsDB
+    dealWithAPIError e = case e of
+      e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
+      other -> throwM other
+    doOnSuccess art = do
+      imgs <- DB.runQuery (selectArticleImageFileNames $ _articleId art)
+      pure $ articleToJSON art creator imgs
+    selectArticleImageFileNames articleId =
+      fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT articleId
+    doLogRequest = Log.logInfo $ "User: " <> _userName creator <> " posts new article: '" <> _articlePostJSONTitle <> "'"
+    doLogSuccess art = Log.logInfo $ "User: " <> _userName creator <> " successfully posted new article, ID: " <> T.tshow (_articleId art)
+    doLogFail = Log.logWarning $ "User: " <> _userName creator <> " failed to post article: '" <> _articlePostJSONTitle <> "'"
+
 insertArticle ::
   (MonadBeam Postgres m, MonadBeam Postgres m) =>
   User ->
