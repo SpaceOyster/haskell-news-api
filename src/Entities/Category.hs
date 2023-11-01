@@ -31,14 +31,12 @@ deriving instance Show Category
 deriving instance Eq Category
 
 instance Table CategoryT where
-  data PrimaryKey CategoryT f = CategoryId (Columnar f (CI Text))
+  data PrimaryKey CategoryT f = CategoryId {unCategoryId :: Columnar f (CI Text)}
     deriving (Generic, Beamable)
   primaryKey = CategoryId . _categoryName
 
 type CategoryId = PrimaryKey CategoryT Identity
 
-unCategoryId :: PrimaryKey CategoryT f -> Columnar f (CI Text)
-unCategoryId (CategoryId i) = i
 
 _categoryParentName :: CategoryT f -> Columnar f (Maybe (CI Text))
 _categoryParentName = unCategoryId . _categoryParentCategory
