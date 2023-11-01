@@ -49,7 +49,7 @@ getImage ::
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
 getImage fileNameT = flip catch dealWithAPIError $ do
   Log.logInfo $ "Image requested: " <> fileNameT
-  fileName <- parseFileName fileNameT
+  fileName <- parseFileName' fileNameT -- TODO: throw err404 here
   imgMaybe <- selectImage (_newsImages newsDB) fileName
   case imgMaybe of
     Nothing -> doLogNotFound >> throwError err404
@@ -78,17 +78,17 @@ instance A.ToJSON ImageJSON where
             "image-name" A..= _imageName
           ]
 
-parseFileName :: (MonadThrow m) => Text -> m FileName
-parseFileName fileName = case T.splitOn "." fileName of
-  [imageId, imageExt] -> pure $ FileName imageId imageExt
-  _ -> throwM $ apiError (T.tshow fileName <> " is invalid file name.")
+parseFileName' :: (MonadThrow m) => Text -> m FileName
+parseFileName' fileName = maybe throw pure $ parseFileName fileName
+  where
+    throw = throwM $ apiError (T.tshow fileName <> " is invalid file name.")
 
 fileToNewImage :: (MonadThrow m) => FileData Mem -> m NewImage
 fileToNewImage file = do
   let fileName = fdFileName file
       newImageDataContent = LBS.toStrict $ fdPayload file
       newImageMimeType = fdFileCType file
-  newImageFileName <- parseFileName fileName
+  newImageFileName <- parseFileName' fileName
   pure $ NewImage {..}
 
 postImage ::

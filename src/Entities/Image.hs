@@ -54,6 +54,11 @@ data FileName = FileName {fnName :: Text, fnExtension :: Text}
 instance Show FileName where
   show fn = T.unpack $ fnName fn <> "." <> fnExtension fn
 
+parseFileName :: (MonadFail m) => Text -> m FileName
+parseFileName fileName = case T.splitOn "." fileName of
+  [imageId, imageExt] -> pure $ FileName imageId imageExt
+  _ -> fail $ show fileName <> " is invalid file name."
+
 data NewImage = NewImage
   { newImageFileName :: FileName,
     newImageMimeType :: Text,
