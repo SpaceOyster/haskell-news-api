@@ -52,7 +52,7 @@ data ArticleJSON = ArticleJSON
 data ArticlePostJSON = ArticlePostJSON
   { -- _articlePostJSONId :: Maybe Int32,
     _articlePostJSONTitle :: Text,
-    _articlePostJSONCategory :: Maybe Text,
+    _articlePostJSONCategory :: Maybe (CI Text),
     _articlePostJSONBody :: Text,
     _articlePostJSONImages :: [FileNameJSON],
     _articlePostJSONIsPublished :: Bool
@@ -76,7 +76,7 @@ instance A.FromJSON ArticlePostJSON where
   parseJSON = A.withObject "ArticleJSON" $ \o -> do
     -- _articlePostJSONId <- o A..:? "id"
     _articlePostJSONTitle <- o A..: "title"
-    _articlePostJSONCategory <- o A..:? "category"
+    _articlePostJSONCategory <- fmap CI.mk <$> o A..:? "category"
     _articlePostJSONBody <- o A..: "body"
     _articlePostJSONImages <- o A..:? "images" A..!= []
     _articlePostJSONIsPublished <- o A..:? "is-published" A..!= False
@@ -190,7 +190,7 @@ insertArticle creator (ArticlePostJSON {..}) = do
             _articleTitle = val_ _articlePostJSONTitle,
             _articleCreatedAt = default_,
             _articleAuthor = UserId (val_ $ _userId creator),
-            _articleCategory = CategoryId $ val_ (CI.mk <$> _articlePostJSONCategory),
+            _articleCategory = CategoryId $ val_ _articlePostJSONCategory,
             _articleBody = val_ _articlePostJSONBody,
             _articleIsPublished = val_ _articlePostJSONIsPublished
           }
