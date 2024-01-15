@@ -50,7 +50,7 @@ data ArticleJSON = ArticleJSON
   deriving (Show)
 
 data ArticlePostJSON = ArticlePostJSON
-  { _articlePostJSONId :: Maybe Int32,
+  { -- _articlePostJSONId :: Maybe Int32,
     _articlePostJSONTitle :: Text,
     _articlePostJSONCategory :: Maybe Text,
     _articlePostJSONBody :: Text,
@@ -74,7 +74,7 @@ instance A.ToJSON ArticleJSON where
 
 instance A.FromJSON ArticlePostJSON where
   parseJSON = A.withObject "ArticleJSON" $ \o -> do
-    _articlePostJSONId <- o A..:? "id"
+    -- _articlePostJSONId <- o A..:? "id"
     _articlePostJSONTitle <- o A..: "title"
     _articlePostJSONCategory <- o A..:? "category"
     _articlePostJSONBody <- o A..: "body"
