@@ -59,6 +59,15 @@ data ArticlePostJSON = ArticlePostJSON
   }
   deriving (Show)
 
+data ArticleUpdateJSON = ArticleUpdateJSON
+  { _articleUpdateJSONTitle :: Maybe Text,
+    _articleUpdateJSONCategory :: Maybe (CI Text),
+    _articleUpdateJSONBody :: Maybe Text,
+    _articleUpdateJSONImages :: Maybe [FileNameJSON],
+    _articleUpdateJSONIsPublished :: Maybe Bool
+  }
+  deriving (Show)
+
 instance A.ToJSON ArticleJSON where
   toJSON (ArticleJSON {..}) =
     A.object
@@ -81,6 +90,15 @@ instance A.FromJSON ArticlePostJSON where
     _articlePostJSONImages <- o A..:? "images" A..!= []
     _articlePostJSONIsPublished <- o A..:? "is-published" A..!= False
     pure ArticlePostJSON {..}
+
+instance A.FromJSON ArticleUpdateJSON where
+  parseJSON = A.withObject "ArticleUpdateJSON" $ \o -> do
+    _articleUpdateJSONTitle <- o A..:? "title"
+    _articleUpdateJSONCategory <- fmap CI.mk <$> o A..:? "category"
+    _articleUpdateJSONBody <- o A..:? "body"
+    _articleUpdateJSONImages <- o A..:? "images"
+    _articleUpdateJSONIsPublished <- o A..:? "is-published"
+    pure ArticleUpdateJSON {..}
 
 newtype FileNameJSON = FileNameJSON {unFileNameJSON :: FileName}
   deriving (Show)
