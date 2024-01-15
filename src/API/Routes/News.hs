@@ -183,7 +183,7 @@ postArticle creator a@(ArticlePostJSON {..}) =
     articleT = _newsArticles newsDB
     imageT = _newsImages newsDB
     articleImageT = _newsArticlesImages newsDB
-    dealWithAPIError e = case e of
+    dealWithAPIError err = case err of
       e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
     doOnSuccess art = do
@@ -199,7 +199,7 @@ insertArticle ::
   (MonadBeam Postgres m, MonadBeam Postgres m) =>
   User ->
   ArticlePostJSON ->
-  m (Maybe (ArticleT Identity))
+  m (Maybe Article)
 insertArticle creator (ArticlePostJSON {..}) = do
   runInsert . insert (_newsArticles newsDB) $
     insertExpressions
@@ -224,10 +224,9 @@ insertArticle creator (ArticlePostJSON {..}) = do
               ==. UserId (val_ $ _userId creator)
         )
       $ all_ (_newsArticles newsDB)
+  let imgNames = unFileNameJSON <$> _articlePostJSONImages
   mapM_ (insertArticleImagesRelations imgNames) article
   pure article
-  where
-    imgNames = unFileNameJSON <$> _articlePostJSONImages
 
 insertArticleImagesRelations ::
   (MonadBeam Postgres m) =>
