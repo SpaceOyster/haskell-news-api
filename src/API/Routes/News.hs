@@ -10,6 +10,7 @@ module API.Routes.News where
 import API.Modifiers.Protected
 import App.Error (AppError (APIError))
 import App.Monad
+import Control.Monad (forM_)
 import Control.Monad.Catch (MonadCatch (catch), MonadThrow, throwM)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
@@ -18,7 +19,8 @@ import Data.Aeson as A
 import Data.Bifunctor (second)
 import Data.CaseInsensitive as CI
 import Data.Int
-import Data.Text.Extended as T
+import Data.Text (Text)
+import qualified Data.Text.Extended as T
 import Data.Time.Clock
 import Database.Beam
 import Database.Beam.Postgres
@@ -31,11 +33,13 @@ import Entities.User
 import Servant
 
 type NewsAPI =
-  Capture "id" Int32 :> Get '[JSON] ArticleJSON
+  "list" :> Get '[JSON] [ArticleJSON]
+    :<|> Capture "id" Int32 :> Get '[JSON] ArticleJSON
+    :<|> Protected AuthorUser :> Capture "id" Int32 :> ReqBody '[JSON] ArticleUpdateJSON :> PostCreated '[JSON] ArticleJSON
     :<|> Protected AuthorUser :> ReqBody '[JSON] ArticlePostJSON :> PostCreated '[JSON] ArticleJSON
 
 news :: ServerT NewsAPI App
-news = getArticle :<|> postArticle
+news = listArticles :<|> getArticle :<|> updateArticle :<|> postArticle
 
 data ArticleJSON = ArticleJSON
   { _articleJSONId :: Int32,
@@ -121,6 +125,8 @@ articleToJSON Article {..} u imgs =
       _articleJSONImages = FileNameJSON <$> imgs,
       _articleJSONIsPublished = _articleIsPublished
     }
+
+listArticles = return undefined
 
 getArticle ::
   ( MonadDatabase m,
@@ -244,3 +250,121 @@ insertArticleImagesRelations imgNames article =
     imgIdFileNames = val_ . T.tshow <$> imgNames
     imgNameString i = concat_ [cast_ (_imageId i) (varchar Nothing), val_ ".", _imageFileExtension i]
     artPk art = ArticleId $ val_ $ _articleId art
+
+updateArticle ::
+  ( MonadDatabase m,
+    MonadIO m,
+    MonadCatch m,
+    MonadThrow m,
+    MonadError ServerError m,
+    MonadLog m
+  ) =>
+  User ->
+  Int32 ->
+  ArticleUpdateJSON ->
+  m ArticleJSON
+updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
+  doLogRequest
+  (article, author) <- lookupArticleByIdWithAuthorName
+  let isAllowedToEdit = (_userId editor == _userId author && _userIsAllowedToPost editor) || _userIsAdmin editor
+  if isAllowedToEdit
+    then doUpdateArticle article
+    else doLogUnauthorized >> throwError err401
+  where
+    articleT = _newsArticles newsDB
+    usersT = _newsUsers newsDB
+    imageT = _newsImages newsDB
+    articleImageT = _newsArticlesImages newsDB
+    articleIdText = T.tshow articleId
+    lookupArticleByIdWithAuthorName = do
+      xMaybe <- DB.runQuery . selectArticleWithAuthor articleT usersT $ ArticleId articleId
+      case xMaybe of
+        Nothing -> doLogNotFound >> throwError err404
+        Just x -> pure x
+    dealWithAPIError err = case err of
+      e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
+      other -> throwM other
+    doUpdateArticle article = do
+      aM <- DB.runQuery (updateArticleDB article editor aUpdate)
+      case aM of
+        Just art -> doLogSuccess >> doOnSuccess art
+        Nothing -> doLogFail >> throwError err500
+    doOnSuccess art = do
+      imgs <- DB.runQuery (selectArticleImageFileNames $ _articleId art)
+      pure $ articleToJSON art editor imgs
+    selectArticleImageFileNames aId =
+      fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT aId
+    doLogNotFound = Log.logInfo $ "Article " <> T.tshow articleId <> " not found"
+    doLogRequest = Log.logInfo $ "User: " <> _userName editor <> " tries to modify article with ID: " <> articleIdText
+    doLogSuccess = Log.logInfo $ "User: " <> _userName editor <> " successfully updated article with ID: " <> articleIdText
+    doLogFail = Log.logWarning $ "User: " <> _userName editor <> " failed to modify article with ID: '" <> articleIdText
+    doLogUnauthorized = Log.logWarning $ "User: " <> _userName editor <> " is not authorized to modify article with ID: '" <> articleIdText
+
+
+updateArticleDB ::
+  (MonadBeam Postgres m) =>
+  Article ->
+  User ->
+  ArticleUpdateJSON ->
+  m (Maybe Article)
+updateArticleDB article creator (ArticleUpdateJSON {..}) = do
+  runUpdate $
+    updateTable
+      (_newsArticles newsDB)
+      ( set
+          { _articleTitle = toUpdatedVMaybe _articleUpdateJSONTitle,
+            _articleBody = toUpdatedVMaybe _articleUpdateJSONBody,
+            _articleCategory = CategoryId $ toUpdatedVMaybe $ Just <$> _articleUpdateJSONCategory,
+            _articleIsPublished = toUpdatedVMaybe _articleUpdateJSONIsPublished
+          }
+      )
+      ( \a ->
+          _articleId a
+            ==. val_ (_articleId article)
+      )
+  forM_
+    _articleUpdateJSONImages
+    (updateArticleImagesReleations article . fmap unFileNameJSON)
+  runSelectReturningOne
+    . select
+    . filter_
+      ( \a ->
+          _articleId a
+            ==. val_ (_articleId article)
+      )
+    $ all_ (_newsArticles newsDB)
+  where
+    toUpdatedVMaybe f = toUpdatedValueMaybe $ const (val_ <$> f)
+
+updateArticleImagesReleations ::
+  (MonadBeam Postgres m) =>
+  Article ->
+  [FileName] ->
+  m ()
+updateArticleImagesReleations article updatedImgNames = do
+  imgs <- selectArticleImageFileNames $ _articleId article
+  let imgsToRemove = filter (`notElem` updatedImgNames) imgs
+      imgsToAdd = filter (`notElem` imgs) updatedImgNames
+  runDelete $
+    delete
+      (_newsArticlesImages newsDB)
+      ( \ai ->
+          exists_ $
+            articleImageReletaionship
+              (_newsArticlesImages newsDB)
+              (_newsArticles newsDB `related_` _articleImageArticleId ai)
+              ( filter_
+                  ( \i -> not_ (imgNameString i `in_` fmap (val_ . T.tshow) imgsToRemove)
+                  )
+                  (_newsImages newsDB `related_` _articleImageImageId ai)
+              )
+      )
+  insertArticleImagesRelations imgsToAdd article
+  where
+    articleT = _newsArticles newsDB
+    imageT = _newsImages newsDB
+    articleImageT = _newsArticlesImages newsDB
+    selectArticleImageFileNames articleId =
+      fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT articleId
+    imgNameString i = concat_ [cast_ (_imageId i) (varchar Nothing), val_ ".", _imageFileExtension i]
+
