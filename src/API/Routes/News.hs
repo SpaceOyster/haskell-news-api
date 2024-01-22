@@ -2,12 +2,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module API.Routes.News where
 
+import API.Modifiers.Beam.Filterable
+import API.Modifiers.Beam.Sortable
+import API.Modifiers.Filterable
+import API.Modifiers.Paginated
 import API.Modifiers.Protected
+import API.Modifiers.Sortable
 import App.Error (AppError (APIError))
 import App.Monad
 import Control.Monad (forM_)
@@ -24,16 +30,36 @@ import qualified Data.Text.Extended as T
 import Data.Time.Clock
 import Database.Beam
 import Database.Beam.Postgres
+import Effects.Config (MonadConfig)
 import Effects.Database as DB
 import Effects.Log as Log
 import Entities.Category
 import Entities.Image
 import Entities.News
 import Entities.User
-import Servant
+import Servant hiding (Tagged)
 
 type NewsAPI =
-  "list" :> Get '[JSON] [ArticleJSON]
+  "list"
+    :> Paginated
+    :> SortableBy
+         '[ "id",
+            "title",
+            "author",
+            "created-at",
+            "category",
+            "is-published"
+          ]
+         ('Ascend "id")
+    :> FilterableBy
+         '[ 'Tagged "id" Int32,
+            'Tagged "title" Text,
+            'Tagged "author" Text,
+            'Tagged "created-at" UTCTime,
+            'Tagged "category" (CI Text),
+            'Tagged "is-published" Bool
+          ]
+    :> Get '[JSON] [ArticleJSON]
     :<|> Capture "id" Int32 :> Get '[JSON] ArticleJSON
     :<|> Protected AuthorUser :> Capture "id" Int32 :> ReqBody '[JSON] ArticleUpdateJSON :> PostCreated '[JSON] ArticleJSON
     :<|> Protected AuthorUser :> ReqBody '[JSON] ArticlePostJSON :> PostCreated '[JSON] ArticleJSON
@@ -126,7 +152,92 @@ articleToJSON Article {..} u imgs =
       _articleJSONIsPublished = _articleIsPublished
     }
 
-listArticles = return undefined
+listArticles ::
+  ( DB.MonadDatabase m,
+    Log.MonadLog m,
+    MonadConfig m,
+    MonadIO m,
+    MonadError ServerError m
+  ) =>
+  Pagination ->
+  SortingRequest
+    '[ "id",
+       "title",
+       "author",
+       "created-at",
+       "category",
+       "is-published"
+     ]
+    ('Ascend "id") ->
+  FilteringRequest
+    '[ 'Tagged "id" Int32,
+       'Tagged "title" Text,
+       'Tagged "author" Text,
+       'Tagged "created-at" UTCTime,
+       'Tagged "category" (CI Text),
+       'Tagged "is-published" Bool
+     ] ->
+  m [ArticleJSON]
+listArticles Pagination {..} sorting fReq = do
+  Log.logInfo $ "Get /news sort-by=" <> T.tshow (unSortingRequest sorting)
+  xs <-
+    DB.runQuery
+      . runSelectReturningList
+      . select
+      . filterByRequest_ fReq filters
+      . limit_ limit
+      . offset_ offset
+      . sortBy_ sorting sorters
+      $ articleWithAuthor
+  xs' <- mapM fetchImageNames xs
+  pure $ fmap toArticleJSON xs'
+  where
+    fetchImageNames (article, author) = do
+      imgs <-
+        DB.runQuery
+          . fmap (fmap (_imageIdFileName . snd))
+          . runSelectReturningList
+          . select
+          $ articleImageReletaionship
+            (_newsArticlesImages newsDB)
+            (filter_ (\a -> _articleId a ==. val_ (_articleId article)) (all_ $ _newsArticles newsDB))
+            (all_ $ _newsImages newsDB)
+      return (article, _userName author, imgs)
+    toArticleJSON (Article {..}, authorName, imgs) =
+      ArticleJSON
+        { _articleJSONId = _articleId,
+          _articleJSONTitle = _articleTitle,
+          _articleJSONCreatedAt = _articleCreatedAt,
+          _articleJSONAuthorName = authorName,
+          _articleJSONCategory = CI.original <$> unCategoryId _articleCategory,
+          _articleJSONBody = _articleBody,
+          _articleJSONImages = FileNameJSON <$> imgs,
+          _articleJSONIsPublished = _articleIsPublished
+        }
+    articleWithAuthor = do
+      article <- all_ $ _newsArticles newsDB
+      user <- related_ (_newsUsers newsDB) (_articleAuthor article)
+      pure (article, user)
+    sorters (Article {..}, User {..}) =
+      SortingApp
+        ( sorterFor_ @"id" _articleId
+            .:. sorterFor_ @"title" _articleTitle
+            .:. sorterFor_ @"author" _userName
+            .:. sorterFor_ @"created-at" _articleCreatedAt
+            .:. sorterFor_ @"category" (unCategoryId _articleCategory)
+            .:. sorterFor_ @"is-published" _articleIsPublished
+            .:. ColNil
+        )
+    filters (Article {..}, User {..}) =
+      FilteringApp
+        ( filterFor_ @"id" _articleId
+            .:. filterFor_ @"title" _articleTitle
+            .:. filterFor_ @"author" _userName
+            .:. filterFor_ @"created-at" _articleCreatedAt
+            .:. filterFor_ @"category" (maybe_ (val_ $ CI.mk "") id $ unCategoryId _articleCategory)
+            .:. filterFor_ @"is-published" _articleIsPublished
+            .:. ColNil
+        )
 
 getArticle ::
   ( MonadDatabase m,
