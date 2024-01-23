@@ -182,6 +182,7 @@ listArticles Pagination {..} sorting fReq = do
   Log.logInfo $ "Get /news sort-by=" <> T.tshow (unSortingRequest sorting)
   xs <-
     DB.runQuery
+      . onlyAuthorName
       . runSelectReturningList
       . select
       . filterByRequest_ fReq filters
@@ -190,9 +191,10 @@ listArticles Pagination {..} sorting fReq = do
       . sortBy_ sorting sorters
       $ articleWithAuthor
   xs' <- mapM fetchImageNames xs
-  pure $ fmap toArticleJSON xs'
+  pure $ fmap (\(article, authorName, imgs) -> mkArticleJSON article authorName imgs) xs'
   where
-    fetchImageNames (article, author) = do
+    onlyAuthorName = fmap (fmap (second _userName))
+    fetchImageNames (article, authorName) = do
       imgs <-
         DB.runQuery
           . fmap (fmap (_imageIdFileName . snd))
@@ -202,18 +204,7 @@ listArticles Pagination {..} sorting fReq = do
             (_newsArticlesImages newsDB)
             (filter_ (\a -> _articleId a ==. val_ (_articleId article)) (all_ $ _newsArticles newsDB))
             (all_ $ _newsImages newsDB)
-      return (article, _userName author, imgs)
-    toArticleJSON (Article {..}, authorName, imgs) =
-      ArticleJSON
-        { _articleJSONId = _articleId,
-          _articleJSONTitle = _articleTitle,
-          _articleJSONCreatedAt = _articleCreatedAt,
-          _articleJSONAuthorName = authorName,
-          _articleJSONCategory = CI.original <$> unCategoryId _articleCategory,
-          _articleJSONBody = _articleBody,
-          _articleJSONImages = FileNameJSON <$> imgs,
-          _articleJSONIsPublished = _articleIsPublished
-        }
+      return (article, authorName, imgs)
     articleWithAuthor = do
       article <- all_ $ _newsArticles newsDB
       user <- related_ (_newsUsers newsDB) (_articleAuthor article)
@@ -250,19 +241,9 @@ getArticle ::
   m ArticleJSON
 getArticle articleId = do
   Log.logInfo $ "Article " <> T.tshow articleId <> " is requested"
-  (Article {..}, authorName) <- lookupArticleByIdWithAuthorName
+  (article, authorName) <- lookupArticleByIdWithAuthorName
   imgs <- DB.runQuery selectArticleImageFileNames
-  pure $
-    ArticleJSON
-      { _articleJSONId = _articleId,
-        _articleJSONTitle = _articleTitle,
-        _articleJSONCreatedAt = _articleCreatedAt,
-        _articleJSONAuthorName = authorName,
-        _articleJSONCategory = CI.original <$> unCategoryId _articleCategory,
-        _articleJSONBody = _articleBody,
-        _articleJSONImages = FileNameJSON <$> imgs,
-        _articleJSONIsPublished = _articleIsPublished
-      }
+  pure $ mkArticleJSON article authorName imgs
   where
     articleT = _newsArticles newsDB
     imageT = _newsImages newsDB
@@ -305,7 +286,7 @@ postArticle creator a@(ArticlePostJSON {..}) =
       other -> throwM other
     doOnSuccess art = do
       imgs <- DB.runQuery (selectArticleImageFileNames $ _articleId art)
-      pure $ articleToJSON art creator imgs
+      pure $ mkArticleJSON art (_userName creator) imgs
     selectArticleImageFileNames articleId =
       fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT articleId
     doLogRequest = Log.logInfo $ "User: " <> _userName creator <> " posts new article: '" <> _articlePostJSONTitle <> "'"
@@ -402,7 +383,7 @@ updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
         Nothing -> doLogFail >> throwError err500
     doOnSuccess art = do
       imgs <- DB.runQuery (selectArticleImageFileNames $ _articleId art)
-      pure $ articleToJSON art editor imgs
+      pure $ mkArticleJSON art (_userName editor) imgs
     selectArticleImageFileNames aId =
       fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT aId
     doLogNotFound = Log.logInfo $ "Article " <> T.tshow articleId <> " not found"
