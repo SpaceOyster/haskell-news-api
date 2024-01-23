@@ -396,7 +396,7 @@ updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
       e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
     doUpdateArticle article = do
-      aM <- DB.runQuery (updateArticleDB article editor aUpdate)
+      aM <- DB.runQuery (updateArticleDB article aUpdate)
       case aM of
         Just art -> doLogSuccess >> doOnSuccess art
         Nothing -> doLogFail >> throwError err500
@@ -415,10 +415,9 @@ updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
 updateArticleDB ::
   (MonadBeam Postgres m) =>
   Article ->
-  User ->
   ArticleUpdateJSON ->
   m (Maybe Article)
-updateArticleDB article creator (ArticleUpdateJSON {..}) = do
+updateArticleDB article (ArticleUpdateJSON {..}) = do
   runUpdate $
     updateTable
       (_newsArticles newsDB)
