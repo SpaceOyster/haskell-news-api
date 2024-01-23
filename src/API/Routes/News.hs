@@ -80,8 +80,7 @@ data ArticleJSON = ArticleJSON
   deriving (Show)
 
 data ArticlePostJSON = ArticlePostJSON
-  { -- _articlePostJSONId :: Maybe Int32,
-    _articlePostJSONTitle :: Text,
+  { _articlePostJSONTitle :: Text,
     _articlePostJSONCategory :: Maybe (CI Text),
     _articlePostJSONBody :: Text,
     _articlePostJSONImages :: [FileNameJSON],
@@ -113,7 +112,6 @@ instance A.ToJSON ArticleJSON where
 
 instance A.FromJSON ArticlePostJSON where
   parseJSON = A.withObject "ArticleJSON" $ \o -> do
-    -- _articlePostJSONId <- o A..:? "id"
     _articlePostJSONTitle <- o A..: "title"
     _articlePostJSONCategory <- fmap CI.mk <$> o A..:? "category"
     _articlePostJSONBody <- o A..: "body"
