@@ -67,3 +67,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - haskell-news-api
+    - hspec
+    - QuickCheck

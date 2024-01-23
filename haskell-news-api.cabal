@@ -126,12 +126,14 @@ test-suite haskell-news-api-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Entities.CategorySpec
       Paths_haskell_news_api
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson
+      QuickCheck
+    , aeson
     , base >=4.7 && <5
     , beam-core
     , beam-postgres
@@ -142,6 +144,7 @@ test-suite haskell-news-api-test
     , cryptonite
     , exceptions
     , haskell-news-api
+    , hspec
     , http-types
     , mtl
     , parsec
