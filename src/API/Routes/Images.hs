@@ -17,14 +17,12 @@ import Control.Monad.IO.Class (MonadIO)
 import DB
 import Data.Aeson as A
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS (fromStrict, toStrict)
+import qualified Data.ByteString.Lazy as LBS (toStrict)
 import qualified Data.CaseInsensitive as CI
 import Data.List ((\\))
 import Data.Text (Text)
-import qualified Data.Text.Encoding as T
 import qualified Data.Text.Extended as T
 import Database.Beam
-import Database.Beam.Postgres
 import Effects.Database as DB
 import Effects.Log as Log
 import Entities.Image
@@ -108,10 +106,8 @@ postImage creator multipartData =
     let files = MP.files multipartData
     newImgsData <- forM files fileToNewImage
     insertNewImages (_newsImages newsDB) newImgsData
-    imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgsData
     doCheckForSuccess newImgsData
   where
-    table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin creator)
     dealWithAPIError e = case e of
       a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
