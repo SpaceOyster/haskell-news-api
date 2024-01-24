@@ -126,7 +126,9 @@ test-suite haskell-news-api-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Data.Text.ExtendedSpec
       Entities.CategorySpec
+      Test.Arbitrary.String
       Paths_haskell_news_api
   hs-source-dirs:
       test
