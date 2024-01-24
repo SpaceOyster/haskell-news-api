@@ -93,7 +93,7 @@ selectImage ::
   (MonadDatabase m, Database Postgres db) =>
   DatabaseEntity Postgres db (TableEntity ImageT) ->
   FileName ->
-  m (Maybe Image)
+  m (Maybe (ImageT Identity))
 selectImage table fn =
   DB.runQuery
     . runSelectReturningOne
