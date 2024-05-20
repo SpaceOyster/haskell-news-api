@@ -181,50 +181,50 @@ listArticles Pagination {..} sorting fReq = do
   Log.logInfo $ "Get /news sort-by=" <> T.tshow (unSortingRequest sorting)
   xs <-
     DB.runQuery
-      . onlyAuthorName
       . runSelectReturningList
       . select
       . filterByRequest_ fReq filters
       . limit_ limit
       . offset_ offset
       . sortBy_ sorting sorters
-      $ articleWithAuthor
+      $ articleWithAuthorAndCategory
   xs' <- mapM fetchImageNames xs
-  pure $ fmap (\(article, authorName, imgs) -> mkArticleJSON article authorName imgs) xs'
+  pure $ fmap (\(article, authorName, imgs, catJSONM) -> mkArticleJSON article authorName imgs catJSONM) xs'
   where
-    onlyAuthorName = fmap (fmap (second _userName))
-    fetchImageNames (article, authorName) = do
+    fetchImageNames (article, authorName, _cat) = do
       imgs <-
         DB.runQuery
-          . fmap (fmap (_imageIdFileName . snd))
+          . fmap (fmap $ _imageIdFileName . snd)
           . runSelectReturningList
           . select
           $ articleImageReletaionship
             (_newsArticlesImages newsDB)
             (filter_ (\a -> _articleId a ==. val_ (_articleId article)) (all_ $ _newsArticles newsDB))
             (all_ $ _newsImages newsDB)
-      return (article, authorName, imgs)
-    articleWithAuthor = do
+      catJSONM <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB)) (unCategoryId $ _articleCategory article)
+      return (article, authorName, imgs, catJSONM)
+    articleWithAuthorAndCategory = do
       article <- all_ $ _newsArticles newsDB
       user <- related_ (_newsUsers newsDB) (_articleAuthor article)
-      pure (article, user)
-    sorters (Article {..}, User {..}) =
+      catM <- leftJoin_ (all_ $ _newsCategories newsDB) (\c -> just_ (pk c) ==. _articleCategory article)
+      pure (article, _userName user, _categoryName catM)
+    sorters (Article {..}, usrname, catName) =
       SortingApp
         ( sorterFor_ @"id" _articleId
             .:. sorterFor_ @"title" _articleTitle
-            .:. sorterFor_ @"author" _userName
+            .:. sorterFor_ @"author" usrname
             .:. sorterFor_ @"created-at" _articleCreatedAt
-            .:. sorterFor_ @"category" (unCategoryId _articleCategory)
+            .:. sorterFor_ @"category" catName
             .:. sorterFor_ @"is-published" _articleIsPublished
             .:. ColNil
         )
-    filters (Article {..}, User {..}) =
+    filters (Article {..}, usrname, catName) =
       FilteringApp
         ( filterFor_ @"id" _articleId
             .:. filterFor_ @"title" _articleTitle
-            .:. filterFor_ @"author" _userName
+            .:. filterFor_ @"author" usrname
             .:. filterFor_ @"created-at" _articleCreatedAt
-            .:. filterFor_ @"category" (maybe_ (val_ $ CI.mk "") id $ unCategoryId _articleCategory)
+            .:. filterFor_ @"category" (maybe_ (val_ $ CI.mk "") id catName)
             .:. filterFor_ @"is-published" _articleIsPublished
             .:. ColNil
         )
