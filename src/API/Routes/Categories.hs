@@ -41,6 +41,8 @@ import DB
 import Data.Aeson as A
 import Data.ByteString.Lazy (fromStrict)
 import Data.CaseInsensitive as CI (CI (original), mk)
+import Data.Int (Int32)
+import qualified Data.List as L (delete, find)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T (encodeUtf8)
 import qualified Data.Text.Extended as T
@@ -191,3 +193,11 @@ postCategories usr (CategoryJSON cat) = do
     doLogDBError =
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
+
+toCategoryJSONById :: Int32 -> [Category] -> Maybe CategoryJSON
+toCategoryJSONById cId xs = do
+  cat <- L.find ((== cId) . _categoryId) xs
+  let withoutCat = L.delete cat xs
+      parentIdM = unCategoryId $ _categoryParentCategory cat
+      rest = parentIdM >>= (`toCategoryJSONById` withoutCat)
+  pure $ CategoryJSON (_categoryName cat) rest
