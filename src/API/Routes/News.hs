@@ -294,6 +294,11 @@ postArticle creator a@(ArticlePostJSON {..}) =
     doLogSuccess art = Log.logInfo $ "User: " <> _userName creator <> " successfully posted new article, ID: " <> T.tshow (_articleId art)
     doLogFail = Log.logWarning $ "User: " <> _userName creator <> " failed to post article: '" <> _articlePostJSONTitle <> "'"
 
+fetchCategoryOrThrowError :: (MonadDatabase m, MonadThrow m) => CI Text -> m Category
+fetchCategoryOrThrowError catName = do
+  catM <- DB.runQuery . lookupCategory (_newsCategories newsDB) $ catName
+  maybe (throwM $ apiError $ "Category \'" <> CI.original catName <> "\' not found") pure catM
+
 insertArticle ::
   (MonadBeam Postgres m, MonadBeam Postgres m) =>
   User ->
