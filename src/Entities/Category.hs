@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -110,3 +111,17 @@ lookupCategoryId ::
   m (Maybe Category)
 lookupCategoryId table cId =
   runSelectReturningOne $ lookup_ table (CategoryId cId)
+
+lookupCategoryWithAncestors ::
+  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  CI Text ->
+  m [Category]
+lookupCategoryWithAncestors table catName =
+  runSelectReturningList . selectWith $ do
+    rec c <-
+          selecting $
+            union_
+              (filter_ (\x -> _categoryName x ==. val_ catName) (all_ table))
+              (reuse c >>= \c' -> filter_ (\x -> _categoryParentCategory c' ==. just_ (pk x)) (all_ table))
+    pure (reuse c)
