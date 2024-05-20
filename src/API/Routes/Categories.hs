@@ -194,6 +194,15 @@ postCategories usr (CategoryJSON cat) = do
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
 
+
+toCategoryJSON :: CI T.Text -> [Category] -> Maybe CategoryJSON
+toCategoryJSON name xs = do
+  cat <- L.find ((== name) . _categoryName) xs
+  let withoutCat = L.delete cat xs
+      parentIdM = unCategoryId $ _categoryParentCategory cat
+      rest = parentIdM >>= (`toCategoryJSONById` withoutCat)
+  pure $ CategoryJSON (_categoryName cat) rest
+
 toCategoryJSONById :: Int32 -> [Category] -> Maybe CategoryJSON
 toCategoryJSONById cId xs = do
   cat <- L.find ((== cId) . _categoryId) xs
