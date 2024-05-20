@@ -242,7 +242,9 @@ getArticle articleId = do
   Log.logInfo $ "Article " <> T.tshow articleId <> " is requested"
   (article, authorName) <- lookupArticleByIdWithAuthorName
   imgs <- DB.runQuery selectArticleImageFileNames
-  pure $ mkArticleJSON article authorName imgs
+  catJSONM <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB)) (unCategoryId $ _articleCategory article)
+  Log.logDebug (T.tshow catJSONM)
+  pure $ mkArticleJSON article authorName imgs catJSONM
   where
     articleT = _newsArticles newsDB
     imageT = _newsImages newsDB
