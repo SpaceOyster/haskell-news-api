@@ -116,11 +116,38 @@ instance Docs.ToSample CategoryJSON where
           { _categoryJSONName = "Haskell",
             _categoryJSONParent = Just parentCat
           }
+
+newtype NewCategoryJSON = NewCategoryJSON {getNewCategory :: NewCategory}
+
+instance A.ToJSON NewCategoryJSON where
+  toJSON (NewCategoryJSON (NewCategory {..})) = A.object $ ["name" A..= _newCategoryName] <> maybeParentField
+    where
+      maybeParentField = maybe [] (\i -> ["parent" A..= i]) _newCategoryParent
+
+instance A.FromJSON NewCategoryJSON where
+  parseJSON = A.withObject "NewCategoryJSON" $ \o -> do
+    _newCategoryName <- o A..: "name"
+    _newCategoryParent <- o A..: "parent"
+    return $ NewCategoryJSON $ NewCategory {..}
+
+instance Docs.ToSample NewCategoryJSON where
+  toSamples _ =
+    [ ("Category may have no parent", cat1),
+      ("Category may have a parent", cat2)
+    ]
+    where
       cat1 =
-        Category
-          { _categoryName = "Outer Space",
-            _categoryParentCategory = CategoryId Nothing
-          }
+        NewCategoryJSON $
+          NewCategory
+            { _newCategoryName = "Outer Space",
+              _newCategoryParent = Nothing
+            }
+      cat2 =
+        NewCategoryJSON $
+          NewCategory
+            { _newCategoryName = "Haskell",
+              _newCategoryParent = Just "Functional Language"
+            }
 
 categories :: ServerT CategoriesAPI App
 categories = listCategories :<|> postCategories
