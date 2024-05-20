@@ -9,7 +9,7 @@
 module Entities.Category where
 
 import App.Error (apiError)
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM, when)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
@@ -58,23 +58,32 @@ data NewCategory = NewCategory
 insertNewCategory ::
   (MonadDatabase m, MonadIO m, Database Postgres db, MonadThrow m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
-  Category ->
+  NewCategory ->
   m ()
 insertNewCategory table newcat = do
   checkIfCategoryExists
-  let maybeParent = _categoryParentName newcat
-  forM_ maybeParent checkIfParentExists
-  runQuery . runInsert . insert table . insertValues . (: []) $ newcat
+  let maybeParent = CI.mk <$> _newCategoryParent newcat
+  parentM <- forM maybeParent fetchParent
+  runQuery
+    . runInsert
+    . insert table
+    $ insertExpressions
+      [ Category
+          { _categoryId = default_,
+            _categoryName = val_ newCatName,
+            _categoryParentCategory = val_ (maybe nothing_ (just_ . pk) parentM)
+          }
+      ]
   where
-    newCatName = _categoryName newcat
+    newCatName = CI.mk $ _newCategoryName newcat
     checkIfCategoryExists = do
       yes <- categoryExists table newCatName
       let msg = "Category \"" <> CI.original newCatName <> "\" already exists"
       when yes (throwM $ apiError msg)
-    checkIfParentExists parent = do
-      yes <- categoryExists table parent
-      let msg = "Parent Category \"" <> CI.original parent <> "\" doesn't exist"
-      unless yes (throwM $ apiError msg)
+    fetchParent parentName = do
+      parentM <- runQuery $ lookupCategory table parentName
+      let msg = "Parent Category \"" <> CI.original parentName <> "\" doesn't exist"
+      maybe (throwM $ apiError msg) pure parentM
 
 categoryExists ::
   (MonadDatabase m, MonadIO m, Database Postgres db) =>
