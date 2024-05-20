@@ -102,3 +102,11 @@ lookupCategory table catName =
     . select
     . filter_ (\c -> _categoryName c ==. val_ catName)
     $ all_ table
+
+lookupCategoryId ::
+  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  Int32 ->
+  m (Maybe Category)
+lookupCategoryId table cId =
+  runSelectReturningOne $ lookup_ table (CategoryId cId)
