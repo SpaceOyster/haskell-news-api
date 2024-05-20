@@ -49,6 +49,12 @@ deriving instance Eq (PrimaryKey CategoryT Identity)
 
 deriving instance Eq (PrimaryKey CategoryT (Nullable Identity))
 
+data NewCategory = NewCategory
+  { _newCategoryName :: Text,
+    _newCategoryParent :: Maybe Text
+  }
+  deriving (Show)
+
 insertNewCategory ::
   (MonadDatabase m, MonadIO m, Database Postgres db, MonadThrow m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
