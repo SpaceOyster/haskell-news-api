@@ -387,13 +387,15 @@ updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
       e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
     doUpdateArticle article = do
-      aM <- DB.runQuery (updateArticleDB article aUpdate)
+      catM <- mapM fetchCategoryOrThrowError (_articleUpdateJSONCategory aUpdate)
+      aM <- DB.runQuery (updateArticleDB article catM aUpdate)
       case aM of
         Just art -> doLogSuccess >> doOnSuccess art
         Nothing -> doLogFail >> throwError err500
     doOnSuccess art = do
       imgs <- DB.runQuery (selectArticleImageFileNames $ _articleId art)
-      pure $ mkArticleJSON art (_userName editor) imgs
+      catJSONM <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB)) (unCategoryId $ _articleCategory art)
+      pure $ mkArticleJSON art (_userName editor) imgs catJSONM
     selectArticleImageFileNames aId =
       fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT aId
     doLogNotFound = Log.logInfo $ "Article " <> T.tshow articleId <> " not found"
@@ -406,16 +408,17 @@ updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
 updateArticleDB ::
   (MonadBeam Postgres m) =>
   Article ->
+  Maybe Category ->
   ArticleUpdateJSON ->
   m (Maybe Article)
-updateArticleDB article (ArticleUpdateJSON {..}) = do
+updateArticleDB article catM (ArticleUpdateJSON {..}) = do
   runUpdate $
     updateTable
       (_newsArticles newsDB)
       ( set
           { _articleTitle = toUpdatedVMaybe _articleUpdateJSONTitle,
             _articleBody = toUpdatedVMaybe _articleUpdateJSONBody,
-            _articleCategory = CategoryId $ toUpdatedVMaybe $ Just <$> _articleUpdateJSONCategory,
+            _articleCategory = CategoryId $ toUpdatedVMaybe $ Just . _categoryId <$> catM,
             _articleIsPublished = toUpdatedVMaybe _articleUpdateJSONIsPublished
           }
       )
