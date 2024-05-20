@@ -81,16 +81,15 @@ categoryExists ::
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   CI Text ->
   m Bool
-categoryExists table catname = isJust <$> lookupCategory table catname
+categoryExists table catname = isJust <$> runQuery (lookupCategory table catname)
 
 lookupCategory ::
-  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   CI Text ->
   m (Maybe Category)
 lookupCategory table catName =
-  runQuery
-    . runSelectReturningOne
+  runSelectReturningOne
     . select
     . filter_ (\c -> _categoryName c ==. val_ catName)
     $ all_ table
