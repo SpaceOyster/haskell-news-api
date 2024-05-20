@@ -125,3 +125,17 @@ lookupCategoryWithAncestors table catName =
               (filter_ (\x -> _categoryName x ==. val_ catName) (all_ table))
               (reuse c >>= \c' -> filter_ (\x -> _categoryParentCategory c' ==. just_ (pk x)) (all_ table))
     pure (reuse c)
+
+lookupCategoryIdWithAncestors ::
+  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  Int32 ->
+  m [Category]
+lookupCategoryIdWithAncestors table cId =
+  runSelectReturningList . selectWith $ do
+    rec c <-
+          selecting $
+            union_
+              (filter_ (\x -> pk x ==. CategoryId (val_ cId)) (all_ table))
+              (reuse c >>= \c' -> filter_ (\x -> _categoryParentCategory c' ==. just_ (pk x)) (all_ table))
+    pure (reuse c)
