@@ -41,9 +41,9 @@ import DB
 import Data.Aeson as A
 import Data.ByteString.Lazy (fromStrict)
 import Data.CaseInsensitive as CI (CI (original), mk)
-import Data.Text
-import Data.Text.Encoding (encodeUtf8)
-import Data.Text.Extended as T
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T (encodeUtf8)
+import qualified Data.Text.Extended as T
 import Database.Beam
 import Effects.Database as DB (MonadDatabase (..))
 import Effects.Log as Log (MonadLog, logInfo, logWarning)
@@ -74,32 +74,44 @@ type CategoriesAPI =
     :> Get '[JSON] [CategoryJSON]
     :<|> Protected AdminUser :> ReqBody '[JSON] CategoryJSON :> PostCreated '[JSON] CategoryJSON
 
-newtype CategoryJSON = CategoryJSON Category
+
+data CategoryJSON = CategoryJSON
+  { _categoryJSONName :: CI T.Text,
+    _categoryJSONParent :: Maybe CategoryJSON
+  }
+  deriving (Show)
 
 instance A.ToJSON CategoryJSON where
-  toJSON (CategoryJSON Category {..}) =
-    A.object $ ["name" A..= CI.original _categoryName] <> maybeParentField
+  toJSON (CategoryJSON {..}) = A.object $ ["name" A..= CI.original _categoryJSONName] <> maybeParentField
     where
-      catIdM = case _categoryParentCategory of
-        CategoryId idMaybe -> idMaybe
-      maybeParentField = maybe [] (\i -> ["parent" A..= CI.original i]) catIdM
+      maybeParentField = maybe [] (\i -> ["parent" A..= i]) _categoryJSONParent
 
 instance A.FromJSON CategoryJSON where
   parseJSON = A.withObject "CategoryJSON" $ \o -> do
-    _categoryName <- CI.mk <$> o A..: "name"
-    _categoryParentCategory <- CategoryId . fmap CI.mk <$> o A..:? "parent"
-    return $ CategoryJSON $ Category {..}
+    _categoryJSONName <- CI.mk <$> o A..: "name"
+    _categoryJSONParent <- o A..: "parent"
+    return $ CategoryJSON {..}
 
 instance Docs.ToSample CategoryJSON where
   toSamples _ =
-    [ ("Category may have no parent", CategoryJSON cat1),
-      ("Category can have a parent", CategoryJSON cat2)
+    [ ("Category may have no parent", cat1),
+      ("Category may have a parent", cat2)
     ]
     where
+      cat1 =
+        CategoryJSON
+          { _categoryJSONName = "Outer Space",
+            _categoryJSONParent = Nothing
+          }
+      parentCat =
+        CategoryJSON
+          { _categoryJSONName = "Functional Language",
+            _categoryJSONParent = Nothing
+          }
       cat2 =
-        Category
-          { _categoryName = "Haskell",
-            _categoryParentCategory = CategoryId $ Just "Functional Programing"
+        CategoryJSON
+          { _categoryJSONName = "Haskell",
+            _categoryJSONParent = Just parentCat
           }
       cat1 =
         Category
