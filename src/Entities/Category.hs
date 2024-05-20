@@ -11,7 +11,9 @@ module Entities.Category where
 import App.Error (apiError)
 import Control.Monad (forM_, unless, when)
 import Control.Monad.Catch (MonadThrow, throwM)
-import Data.CaseInsensitive as CI
+import Data.CaseInsensitive (CI)
+import qualified Data.CaseInsensitive as CI
+import Data.Int
 import Data.Maybe (isJust)
 import Data.Text
 import Database.Beam
@@ -19,7 +21,8 @@ import Database.Beam.Postgres
 import Effects.Database
 
 data CategoryT f = Category
-  { _categoryName :: Columnar f (CI Text),
+  { _categoryId :: Columnar f Int32,
+    _categoryName :: Columnar f (CI Text),
     _categoryParentCategory :: PrimaryKey CategoryT (Nullable f)
   }
   deriving (Generic, Beamable)
@@ -31,15 +34,12 @@ deriving instance Show Category
 deriving instance Eq Category
 
 instance Table CategoryT where
-  data PrimaryKey CategoryT f = CategoryId {unCategoryId :: Columnar f (CI Text)}
+  data PrimaryKey CategoryT f = CategoryId {unCategoryId :: Columnar f Int32}
     deriving (Generic, Beamable)
-  primaryKey = CategoryId . _categoryName
+  primaryKey = CategoryId . _categoryId
 
 type CategoryId = PrimaryKey CategoryT Identity
 
-
-_categoryParentName :: CategoryT f -> Columnar f (Maybe (CI Text))
-_categoryParentName = unCategoryId . _categoryParentCategory
 
 deriving instance Show (PrimaryKey CategoryT Identity)
 
