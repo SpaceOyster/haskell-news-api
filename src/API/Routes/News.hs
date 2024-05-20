@@ -138,14 +138,14 @@ instance A.ToJSON FileNameJSON where
 instance A.FromJSON FileNameJSON where
   parseJSON = A.withText "FileNameJSON" (fmap FileNameJSON . parseFileName)
 
-mkArticleJSON :: Article -> Text -> [FileName] -> ArticleJSON
-mkArticleJSON Article {..} authorName imgs =
+mkArticleJSON :: Article -> Text -> [FileName] -> Maybe CategoryJSON -> ArticleJSON
+mkArticleJSON Article {..} authorName imgs catJSONM =
   ArticleJSON
     { _articleJSONId = _articleId,
       _articleJSONTitle = _articleTitle,
       _articleJSONCreatedAt = _articleCreatedAt,
       _articleJSONAuthorName = authorName,
-      _articleJSONCategory = CI.original <$> unCategoryId _articleCategory,
+      _articleJSONCategory = catJSONM,
       _articleJSONBody = _articleBody,
       _articleJSONImages = FileNameJSON <$> imgs,
       _articleJSONIsPublished = _articleIsPublished
