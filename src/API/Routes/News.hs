@@ -274,7 +274,8 @@ postArticle ::
 postArticle creator a@(ArticlePostJSON {..}) =
   flip catch dealWithAPIError $ do
     doLogRequest
-    aM <- DB.runQuery $ insertArticle creator a
+    catM <- mapM fetchCategoryOrThrowError _articlePostJSONCategory
+    aM <- DB.runQuery $ insertArticle creator catM a
     case aM of
       Just art -> doLogSuccess art >> doOnSuccess art
       Nothing -> doLogFail >> throwError err500
@@ -282,12 +283,14 @@ postArticle creator a@(ArticlePostJSON {..}) =
     articleT = _newsArticles newsDB
     imageT = _newsImages newsDB
     articleImageT = _newsArticlesImages newsDB
+    categoriesT = _newsCategories newsDB
     dealWithAPIError err = case err of
       e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
     doOnSuccess art = do
       imgs <- DB.runQuery (selectArticleImageFileNames $ _articleId art)
-      pure $ mkArticleJSON art (_userName creator) imgs
+      catJSONM <- maybe (pure Nothing) (categoryWithParentsById categoriesT) (unCategoryId $ _articleCategory art)
+      pure $ mkArticleJSON art (_userName creator) imgs catJSONM
     selectArticleImageFileNames articleId =
       fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT articleId
     doLogRequest = Log.logInfo $ "User: " <> _userName creator <> " posts new article: '" <> _articlePostJSONTitle <> "'"
@@ -302,9 +305,10 @@ fetchCategoryOrThrowError catName = do
 insertArticle ::
   (MonadBeam Postgres m, MonadBeam Postgres m) =>
   User ->
+  Maybe Category ->
   ArticlePostJSON ->
   m (Maybe Article)
-insertArticle creator (ArticlePostJSON {..}) = do
+insertArticle creator catM (ArticlePostJSON {..}) = do
   runInsert . insert (_newsArticles newsDB) $
     insertExpressions
       [ Article
@@ -312,7 +316,7 @@ insertArticle creator (ArticlePostJSON {..}) = do
             _articleTitle = val_ _articlePostJSONTitle,
             _articleCreatedAt = default_,
             _articleAuthor = UserId (val_ $ _userId creator),
-            _articleCategory = CategoryId $ val_ _articlePostJSONCategory,
+            _articleCategory = CategoryId $ val_ $ _categoryId <$> catM,
             _articleBody = val_ _articlePostJSONBody,
             _articleIsPublished = val_ _articlePostJSONIsPublished
           }
