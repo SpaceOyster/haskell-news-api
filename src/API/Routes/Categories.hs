@@ -196,6 +196,14 @@ postCategories usr (CategoryJSON cat) = do
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
 
 
+categoryWithParents ::
+  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  CI T.Text ->
+  m (Maybe CategoryJSON)
+categoryWithParents table name =
+  fmap (toCategoryJSON name) . DB.runQuery $ lookupCategoryWithAncestors table name
+
 categoryWithParentsById ::
   (MonadDatabase m, MonadIO m, Database Postgres db) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
