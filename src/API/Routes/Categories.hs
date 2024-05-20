@@ -47,6 +47,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T (encodeUtf8)
 import qualified Data.Text.Extended as T
 import Database.Beam
+import Database.Beam.Postgres
 import Effects.Database as DB (MonadDatabase (..))
 import Effects.Log as Log (MonadLog, logInfo, logWarning)
 import Entities.Category
@@ -194,6 +195,14 @@ postCategories usr (CategoryJSON cat) = do
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
 
+
+categoryWithParentsById ::
+  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  Int32 ->
+  m (Maybe CategoryJSON)
+categoryWithParentsById table cId =
+  fmap (toCategoryJSONById cId) . DB.runQuery $ lookupCategoryIdWithAncestors table cId
 
 toCategoryJSON :: CI T.Text -> [Category] -> Maybe CategoryJSON
 toCategoryJSON name xs = do
