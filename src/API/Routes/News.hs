@@ -15,6 +15,7 @@ import API.Modifiers.Paginated
 import API.Modifiers.Protected
 import API.Modifiers.Sortable
 import App.Error (AppError (APIError))
+import API.Routes.Categories (CategoryJSON, categoryWithParentsById)
 import App.Monad
 import Control.Monad (forM_)
 import Control.Monad.Catch (MonadCatch (catch), MonadThrow, throwM)
@@ -72,7 +73,7 @@ data ArticleJSON = ArticleJSON
     _articleJSONTitle :: Text,
     _articleJSONCreatedAt :: UTCTime,
     _articleJSONAuthorName :: Text,
-    _articleJSONCategory :: Maybe Text,
+    _articleJSONCategory :: Maybe CategoryJSON,
     _articleJSONBody :: Text,
     _articleJSONImages :: [FileNameJSON],
     _articleJSONIsPublished :: Bool
