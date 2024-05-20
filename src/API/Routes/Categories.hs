@@ -134,34 +134,39 @@ listCategories ::
   Pagination ->
   SortingRequest '["name", "parent"] ('Ascend "name") ->
   FilteringRequest
-    '[ 'Tagged "name" (CI Text), 'Tagged "parent" (CI Text)] ->
+    '[ 'Tagged "name" (CI T.Text), 'Tagged "parent" (CI T.Text)] ->
   m [CategoryJSON]
 listCategories (Pagination {..}) sorting fReq = do
   Log.logInfo $ "Get /categories sort-by=" <> T.tshow (unSortingRequest sorting)
-  usrs <-
+  catPairs <-
     DB.runQuery
       . runSelectReturningList
       . select
-      . filterByRequest_ fReq filters
       . limit_ limit
       . offset_ offset
+      . filterByRequest_ fReq filters
       . sortBy_ sorting sorters
-      . all_
-      $ _newsCategories newsDB
-  pure $ CategoryJSON <$> usrs
+      $ do
+        category <- all_ $ _newsCategories newsDB
+        parentM <- leftJoin_ (all_ $ _newsCategories newsDB) (\p -> maybe_ (val_ False) (`references_` p) (_categoryParentCategory category))
+        pure (category, parentM)
+  mapM fetchParentsMkJSON catPairs
   where
-    sorters Category {..} =
+    sorters (c, pM) =
       SortingApp
-        ( sorterFor_ @"name" _categoryName
-            .:. sorterFor_ @"parent" _categoryName
+        ( sorterFor_ @"name" (_categoryName c)
+            .:. sorterFor_ @"parent" (_categoryName pM)
             .:. ColNil
         )
-    filters Category {..} =
+    filters (c, pM) =
       FilteringApp
-        ( filterFor_ @"name" _categoryName
-            .:. filterFor_ @"parent" _categoryName
+        ( filterFor_ @"name" (_categoryName c)
+            .:. filterFor_ @"parent" (fromMaybe_ (val_ "") $ _categoryName pM) --  | treat empty columns as empty strings
             .:. ColNil
         )
+    fetchParentsMkJSON (c, pM) = do
+      pJSONMaybe <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB) . _categoryId) pM
+      pure $ CategoryJSON (_categoryName c) pJSONMaybe
 
 postCategories ::
   ( DB.MonadDatabase m,
