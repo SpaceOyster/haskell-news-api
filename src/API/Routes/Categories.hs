@@ -75,7 +75,7 @@ type CategoriesAPI =
             'Tagged "parent" (CI T.Text)
           ]
     :> Get '[JSON] [CategoryJSON]
-    :<|> Protected AdminUser :> ReqBody '[JSON] CategoryJSON :> PostCreated '[JSON] CategoryJSON
+    :<|> Protected AdminUser :> ReqBody '[JSON] NewCategoryJSON :> PostCreated '[JSON] CategoryJSON
 
 
 data CategoryJSON = CategoryJSON
@@ -150,7 +150,7 @@ instance Docs.ToSample NewCategoryJSON where
             }
 
 categories :: ServerT CategoriesAPI App
-categories = listCategories :<|> postCategories
+categories = listCategories :<|> postCategory
 
 listCategories ::
   ( DB.MonadDatabase m,
@@ -195,7 +195,7 @@ listCategories (Pagination {..}) sorting fReq = do
       pJSONMaybe <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB) . _categoryId) pM
       pure $ CategoryJSON (_categoryName c) pJSONMaybe
 
-postCategories ::
+postCategory ::
   ( DB.MonadDatabase m,
     Log.MonadLog m,
     MonadIO m,
@@ -204,22 +204,22 @@ postCategories ::
     MonadCatch m
   ) =>
   User ->
-  CategoryJSON ->
+  NewCategoryJSON ->
   m CategoryJSON
-postCategories usr (CategoryJSON cat) = do
+postCategory usr (NewCategoryJSON cat) = do
   flip catch dealWithAPIerror $ insertNewCategory table cat
   doCheckIfSuccessfull
   where
     table = _newsCategories newsDB
     creatorLogin = CI.original (_userLogin usr)
     dealWithAPIerror e = case e of
-      APIError msg -> throwError $ err500 {errBody = fromStrict $ encodeUtf8 msg}
+      APIError msg -> throwError $ err500 {errBody = fromStrict $ T.encodeUtf8 msg}
       other -> throwM other
     doCheckIfSuccessfull = do
-      newCatMaybe <- lookupCategory table $ _categoryName cat
+      newCatMaybe <- categoryWithParents table $ CI.mk (_newCategoryName cat)
       case newCatMaybe of
         Nothing -> doLogDBError >> throwError err503
-        Just c -> doLogSuccess >> return (CategoryJSON c)
+        Just c -> doLogSuccess >> return c
     doLogSuccess =
       Log.logInfo $
         "User \"" <> creatorLogin <> "\" created new category :\"" <> T.tshow cat <> "\""
