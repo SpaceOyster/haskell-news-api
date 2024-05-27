@@ -149,6 +149,18 @@ instance Docs.ToSample NewCategoryJSON where
               _newCategoryParent = Just "Functional Language"
             }
 
+data CategoryUpdateJSON = CategoryUpdateJSON
+  { _categoryUpdateJSONName :: Maybe (CI T.Text),
+    _categoryUpdateJSONParent :: Maybe (CI T.Text)
+  }
+  deriving (Show)
+
+instance A.FromJSON CategoryUpdateJSON where
+  parseJSON = A.withObject "CategoryUpdateJSON" $ \o -> do
+    _categoryUpdateJSONName <- fmap CI.mk <$> o A..:? "name"
+    _categoryUpdateJSONParent <- fmap CI.mk <$> o A..:? "parent"
+    pure CategoryUpdateJSON {..}
+
 categories :: ServerT CategoriesAPI App
 categories = listCategories :<|> postCategory
 
