@@ -53,7 +53,8 @@ import Effects.Log as Log (MonadLog, logInfo, logWarning)
 import Entities.Category
 import Entities.User
 import Servant
-  ( Get,
+  ( Capture,
+    Get,
     JSON,
     PostCreated,
     ReqBody,
@@ -75,6 +76,7 @@ type CategoriesAPI =
             'Tagged "parent" (CI T.Text)
           ]
     :> Get '[JSON] [CategoryJSON]
+    :<|> Protected AdminUser :> Capture "name" T.Text :> ReqBody '[JSON] CategoryUpdateJSON :> PostCreated '[JSON] CategoryJSON
     :<|> Protected AdminUser :> ReqBody '[JSON] NewCategoryJSON :> PostCreated '[JSON] CategoryJSON
 
 
@@ -162,7 +164,7 @@ instance A.FromJSON CategoryUpdateJSON where
     pure CategoryUpdateJSON {..}
 
 categories :: ServerT CategoriesAPI App
-categories = listCategories :<|> postCategory
+categories = listCategories :<|> updateCategory :<|> postCategory
 
 listCategories ::
   ( DB.MonadDatabase m,
@@ -239,6 +241,61 @@ postCategory usr (NewCategoryJSON cat) = do
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
 
+updateCategory ::
+  ( DB.MonadDatabase m,
+    Log.MonadLog m,
+    MonadIO m,
+    MonadError ServerError m,
+    MonadThrow m,
+    MonadCatch m
+  ) =>
+  User ->
+  T.Text ->
+  CategoryUpdateJSON ->
+  m CategoryJSON
+updateCategory usr catName newCatJSON = flip catch dealWithAPIError $ do
+  doLogRequest
+  cat <- fetchCategory catName
+  doUpdateCategory cat newCatJSON
+  where
+    dealWithAPIError err = case err of
+      e@(APIError msg) -> Log.logWarning (T.tshow e) >> throwError err500 {errBody = T.textToLBS msg}
+      other -> throwM other
+    fetchCategory cName = do
+      catM <- DB.runQuery $ lookupCategory (_newsCategories newsDB) $ CI.mk cName
+      case catM of
+        Just x -> pure x
+        Nothing -> doLogNotFound >> throwM (apiError $ "Category '" <> catName <> "' doesn't exist")
+    doUpdateCategory cat newCJSON = do
+      catM <- DB.runQuery $ updateCategoryDB cat newCJSON
+      case toCategoryJSONById (_categoryId cat) catM of
+        Just x -> doLogSuccess x >> pure x
+        Nothing -> doLogFail >> throwError err500
+    doLogRequest = Log.logInfo $ "User: '" <> _userName usr <> "' tries to modify category: '" <> catName <> "'"
+    doLogNotFound = Log.logInfo $ "Category '" <> catName <> "' not found"
+    doLogSuccess x = Log.logInfo $ "User: '" <> _userName usr <> "' updated category '" <> catName <> "' : " <> T.tshow x
+    doLogFail = Log.logInfo $ "User: '" <> _userName usr <> "' failed to modify category: '" <> catName <> "'"
+
+updateCategoryDB ::
+  (MonadBeam Postgres m, MonadIO m) => Category -> CategoryUpdateJSON -> m [Category]
+updateCategoryDB cat (CategoryUpdateJSON {..}) = do
+  pIdMaybe <- generateParentIdUpdate _categoryUpdateJSONParent
+  runUpdate $
+    updateTable
+      (_newsCategories newsDB)
+      ( set
+          { _categoryName = toUpdatedVMaybe _categoryUpdateJSONName,
+            _categoryParentCategory = pIdMaybe
+          }
+      )
+      (\a -> _categoryId a ==. val_ (_categoryId cat))
+  lookupCategoryIdWithAncestors (_newsCategories newsDB) (_categoryId cat)
+  where
+    toUpdatedVMaybe f = toUpdatedValueMaybe $ const (val_ <$> f)
+    generateParentIdUpdate parentName = case parentName of
+      Nothing -> pure $ CategoryId toOldValue
+      Just "null" -> pure $ CategoryId $ toNewValue nothing_
+      Just p -> CategoryId . toUpdatedVMaybe . Just . fmap _categoryId <$> lookupCategory (_newsCategories newsDB) p
 
 categoryWithParents ::
   (MonadDatabase m, MonadIO m, Database Postgres db) =>
