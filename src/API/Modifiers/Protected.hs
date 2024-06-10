@@ -11,6 +11,7 @@
 module API.Modifiers.Protected where
 
 import App.Monad
+import Control.Monad (when)
 import qualified DB
 import Data.CaseInsensitive as CI (original)
 import Data.Text.Encoding (decodeUtf8)
@@ -165,6 +166,22 @@ authHandlerBuilder prox env = mkAuthHandler handler
       Log.logWarning $
         "User \"" <> creatorLogin usr <> "\" is not authorised to access " <> pathText <> " route"
     doOnUnauthorised pathText usr = doLogUnauthorised pathText usr >> throwError err401
+
+authHandlerOptionalAuthor :: AppEnv -> AuthHandler Request OptionalAuthorUser
+authHandlerOptionalAuthor env = mkAuthHandler handler
+  where
+    validate pathText ba = do
+      usr <- lookupAccount ba
+      when (_userIsAllowedToPost usr || _userIsAdmin usr) (doLogAuthorised pathText usr)
+      pure (OptionalAuthorUser $ Just usr)
+    handler req = do
+      let maybeBasicAuthData = decodeBAHdr req
+      let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
+      maybe (pure $ OptionalAuthorUser Nothing) (appToHandler env . validate pathText) maybeBasicAuthData
+    creatorLogin usr = CI.original (_userLogin usr)
+    doLogAuthorised pathText usr =
+      Log.logInfo $
+        "User \"" <> creatorLogin usr <> "\" logged to " <> pathText <> " route"
 
 authContext ::
   AppEnv ->
