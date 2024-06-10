@@ -42,6 +42,7 @@ import Servant hiding (Tagged)
 
 type NewsAPI =
   "list"
+    :> Protected OptionalAuthorUser
     :> Paginated
     :> SortableBy
          '[ "id",
@@ -158,6 +159,7 @@ listArticles ::
     MonadIO m,
     MonadError ServerError m
   ) =>
+  OptionalAuthorUser ->
   Pagination ->
   SortingRequest
     '[ "id",
@@ -177,7 +179,7 @@ listArticles ::
        'Tagged "is-published" Bool
      ] ->
   m [ArticleJSON]
-listArticles Pagination {..} sorting fReq = do
+listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq = do
   Log.logInfo $ "Get /news sort-by=" <> T.tshow (unSortingRequest sorting)
   xs <-
     DB.runQuery
@@ -191,6 +193,10 @@ listArticles Pagination {..} sorting fReq = do
   xs' <- mapM fetchImageNames xs
   pure $ fmap (\(article, authorName, imgs, catJSONM) -> mkArticleJSON article authorName imgs catJSONM) xs'
   where
+    hideUnpublished usrM = filter_ $ \a ->
+      _articleIsPublished a ||. case usrM of
+        Nothing -> val_ False
+        Just u -> (unUserId (_articleAuthor a) ==. val_ (_userId u)) ||. val_ (_userIsAdmin u)
     fetchImageNames (article, authorName, _cat) = do
       imgs <-
         DB.runQuery
@@ -204,7 +210,7 @@ listArticles Pagination {..} sorting fReq = do
       catJSONM <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB)) (unCategoryId $ _articleCategory article)
       return (article, authorName, imgs, catJSONM)
     articleWithAuthorAndCategory = do
-      article <- all_ $ _newsArticles newsDB
+      article <- hideUnpublished usrMaybe $ all_ $ _newsArticles newsDB
       user <- related_ (_newsUsers newsDB) (_articleAuthor article)
       catM <- leftJoin_ (all_ $ _newsCategories newsDB) (\c -> just_ (pk c) ==. _articleCategory article)
       pure (article, _userName user, _categoryName catM)
