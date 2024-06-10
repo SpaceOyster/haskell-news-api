@@ -56,6 +56,7 @@ type AuthHandlerType pType =
   AuthHandler Request (AuthServerData (AuthProtect (AuthName pType)))
 
 instance
+  {-# OVERLAPPABLE #-}
   ( HasServer api context,
     HasContextEntry context (AuthHandlerType pType),
     (ProtectionType (AuthServerData (AuthProtect (AuthName pType)))),
@@ -63,7 +64,7 @@ instance
   ) =>
   HasServer (Protected pType :> api) context
   where
-  type ServerT (Protected pType :> api) m = User -> ServerT api m
+  type ServerT (Protected pType :> api) m = AuthServerData (AuthProtect (AuthName pType)) -> ServerT api m
 
   hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
@@ -72,7 +73,8 @@ instance
     where
       api = Proxy :: Proxy (AuthProtect (AuthName pType) :> api)
       checkUserStatus f usr = do
-        f $ getUser usr
+        f usr
+
 
 instance Docs.ToAuthInfo Protected where
   toAuthInfo _ =
@@ -110,26 +112,26 @@ type instance AuthServerData (AuthProtect "author") = AuthorUser
 
 type instance AuthServerData (AuthProtect "optional-author") = OptionalAuthorUser
 
+type family AuthName typ :: Symbol where
+  AuthName AnyUser = "any-user"
+  AuthName AdminUser = "admin"
+  AuthName AuthorUser = "author"
 class ProtectionType typ where
-  type AuthName typ :: Symbol
   cons :: Proxy typ -> User -> typ
   checkUser :: Proxy typ -> User -> Bool
   getUser :: typ -> User
 
 instance ProtectionType AnyUser where
-  type AuthName AnyUser = "any-user"
   cons _ = AnyUser
   checkUser _ _ = True
   getUser = getAnyUser
 
 instance ProtectionType AdminUser where
-  type AuthName AdminUser = "admin"
   cons _ = AdminUser
   checkUser _ = _userIsAdmin
   getUser = getAdminUser
 
 instance ProtectionType AuthorUser where
-  type AuthName AuthorUser = "author"
   cons _ = AuthorUser
   checkUser _ u = _userIsAllowedToPost u || _userIsAdmin u
   getUser = getAuthorUser
