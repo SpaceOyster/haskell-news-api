@@ -75,6 +75,23 @@ instance
       checkUserStatus f usr = do
         f usr
 
+instance
+  {-# OVERLAPPING #-}
+  ( HasServer api context,
+    HasContextEntry context (AuthHandlerType OptionalAuthorUser)
+  ) =>
+  HasServer (Protected OptionalAuthorUser :> api) context
+  where
+  type ServerT (Protected OptionalAuthorUser :> api) m = AuthServerData (AuthProtect (AuthName OptionalAuthorUser)) -> ServerT api m
+
+  hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt . s
+
+  route Proxy context delayed =
+    route api context (checkUserStatus <$> delayed)
+    where
+      api = Proxy :: Proxy (AuthProtect (AuthName OptionalAuthorUser) :> api)
+      checkUserStatus f usr = do
+        f usr
 
 instance Docs.ToAuthInfo Protected where
   toAuthInfo _ =
@@ -116,6 +133,8 @@ type family AuthName typ :: Symbol where
   AuthName AnyUser = "any-user"
   AuthName AdminUser = "admin"
   AuthName AuthorUser = "author"
+  AuthName OptionalAuthorUser = "optional-author"
+
 class ProtectionType typ where
   cons :: Proxy typ -> User -> typ
   checkUser :: Proxy typ -> User -> Bool
@@ -139,7 +158,8 @@ instance ProtectionType AuthorUser where
 type AvailableAuthHandlers =
   '[ AuthHandler Request AnyUser,
      AuthHandler Request AdminUser,
-     AuthHandler Request AuthorUser
+     AuthHandler Request AuthorUser,
+     AuthHandler Request OptionalAuthorUser
    ]
 
 authHandlerAny :: AppEnv -> AuthHandler Request AnyUser
@@ -190,6 +210,13 @@ authContext ::
   Context
     '[ AuthHandler Request AnyUser,
        AuthHandler Request AdminUser,
-       AuthHandler Request AuthorUser
+       AuthHandler Request AuthorUser,
+       AuthHandler Request OptionalAuthorUser
      ]
-authContext env = authHandlerAny env :. authHandlerAdmin env :. authHandlerAuthor env :. EmptyContext
+authContext env =
+  authHandlerAny env
+    :. authHandlerAdmin env
+    :. authHandlerAuthor env
+    :. authHandlerOptionalAuthor env
+    :. EmptyContext
+
