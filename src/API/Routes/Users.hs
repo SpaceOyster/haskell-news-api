@@ -26,7 +26,7 @@ import API.Modifiers.Filterable
     Tagged (Tagged),
   )
 import API.Modifiers.Paginated (Paginated, Pagination (..))
-import API.Modifiers.Protected (AdminUser, Protected)
+import API.Modifiers.Protected (AdminUser (AdminUser), Protected)
 import API.Modifiers.Sortable
   ( SortableBy,
     Sorting (Ascend),
@@ -222,10 +222,10 @@ addNewUser ::
     MonadThrow m,
     MonadCatch m
   ) =>
-  User ->
+  AdminUser ->
   NewUserJSON ->
   m UserJSON
-addNewUser creator (NewUserJSON newUser) = do
+addNewUser (AdminUser creator) (NewUserJSON newUser) = do
   flip catch dealWithAPIerror $ insertNewUser table newUser
   doCheckIfSuccessfull
   where

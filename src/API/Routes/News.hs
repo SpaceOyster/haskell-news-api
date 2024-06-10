@@ -14,8 +14,8 @@ import API.Modifiers.Filterable
 import API.Modifiers.Paginated
 import API.Modifiers.Protected
 import API.Modifiers.Sortable
-import App.Error (AppError (APIError))
 import API.Routes.Categories (CategoryJSON, categoryWithParentsById)
+import App.Error (AppError (APIError), apiError)
 import App.Monad
 import Control.Monad (forM_)
 import Control.Monad.Catch (MonadCatch (catch), MonadThrow, throwM)
@@ -268,10 +268,10 @@ postArticle ::
     MonadError ServerError m,
     MonadLog m
   ) =>
-  User ->
+  AuthorUser ->
   ArticlePostJSON ->
   m ArticleJSON
-postArticle creator a@(ArticlePostJSON {..}) =
+postArticle (AuthorUser creator) a@(ArticlePostJSON {..}) =
   flip catch dealWithAPIError $ do
     doLogRequest
     catM <- mapM fetchCategoryOrThrowError _articlePostJSONCategory
@@ -361,14 +361,14 @@ updateArticle ::
     MonadError ServerError m,
     MonadLog m
   ) =>
-  User ->
+  AuthorUser ->
   Int32 ->
   ArticleUpdateJSON ->
   m ArticleJSON
-updateArticle editor articleId aUpdate = flip catch dealWithAPIError $ do
+updateArticle (AuthorUser editor) articleId aUpdate = flip catch dealWithAPIError $ do
   doLogRequest
   (article, author) <- lookupArticleByIdWithAuthorName
-  let isAllowedToEdit = (_userId editor == _userId author && _userIsAllowedToPost editor) || _userIsAdmin editor
+  let isAllowedToEdit = _userId editor == _userId author && _userIsAllowedToPost editor || _userIsAdmin editor
   if isAllowedToEdit
     then doUpdateArticle article
     else doLogUnauthorized >> throwError err401

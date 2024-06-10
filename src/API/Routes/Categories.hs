@@ -26,7 +26,7 @@ import API.Modifiers.Filterable
     Tagged (Tagged),
   )
 import API.Modifiers.Paginated (Paginated, Pagination (..))
-import API.Modifiers.Protected (AdminUser, Protected)
+import API.Modifiers.Protected (AdminUser (AdminUser), Protected)
 import API.Modifiers.Sortable
   ( SortableBy,
     Sorting (Ascend),
@@ -217,10 +217,10 @@ postCategory ::
     MonadThrow m,
     MonadCatch m
   ) =>
-  User ->
+  AdminUser ->
   NewCategoryJSON ->
   m CategoryJSON
-postCategory usr (NewCategoryJSON cat) = do
+postCategory (AdminUser usr) (NewCategoryJSON cat) = do
   flip catch dealWithAPIerror $ insertNewCategory table cat
   doCheckIfSuccessfull
   where
@@ -249,11 +249,11 @@ updateCategory ::
     MonadThrow m,
     MonadCatch m
   ) =>
-  User ->
+  AdminUser ->
   T.Text ->
   CategoryUpdateJSON ->
   m CategoryJSON
-updateCategory usr catName newCatJSON = flip catch dealWithAPIError $ do
+updateCategory (AdminUser usr) catName newCatJSON = flip catch dealWithAPIError $ do
   doLogRequest
   cat <- fetchCategory catName
   doUpdateCategory cat newCatJSON

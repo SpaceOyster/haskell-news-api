@@ -7,7 +7,7 @@
 
 module API.Routes.Images where
 
-import API.Modifiers.Protected (AuthorUser, Protected)
+import API.Modifiers.Protected (AuthorUser (AuthorUser), Protected)
 import App.Error (AppError (APIError), apiError)
 import App.Monad
 import Control.Monad
@@ -98,10 +98,10 @@ postImage ::
     MonadError ServerError m,
     MonadCatch m
   ) =>
-  User ->
+  AuthorUser ->
   MultipartData Mem ->
   m [ImageJSON]
-postImage creator multipartData =
+postImage (AuthorUser creator) multipartData =
   flip catch dealWithAPIError $ do
     let files = MP.files multipartData
     newImgsData <- forM files fileToNewImage
