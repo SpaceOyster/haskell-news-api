@@ -384,6 +384,7 @@ updateArticle (AuthorUser editor) articleId aUpdate = flip catch dealWithAPIErro
     imageT = _newsImages newsDB
     articleImageT = _newsArticlesImages newsDB
     articleIdText = T.tshow articleId
+    editorName = _userName editor
     lookupArticleByIdWithAuthorName = do
       xMaybe <- DB.runQuery . selectArticleWithAuthor articleT usersT $ ArticleId articleId
       case xMaybe of
@@ -405,10 +406,10 @@ updateArticle (AuthorUser editor) articleId aUpdate = flip catch dealWithAPIErro
     selectArticleImageFileNames aId =
       fmap _imageIdFileName <$> selectArticleImages articleT imageT articleImageT aId
     doLogNotFound = Log.logInfo $ "Article " <> T.tshow articleId <> " not found"
-    doLogRequest = Log.logInfo $ "User: " <> _userName editor <> " tries to modify article with ID: " <> articleIdText
-    doLogSuccess = Log.logInfo $ "User: " <> _userName editor <> " successfully updated article with ID: " <> articleIdText
-    doLogFail = Log.logWarning $ "User: " <> _userName editor <> " failed to modify article with ID: '" <> articleIdText
-    doLogUnauthorized = Log.logWarning $ "User: " <> _userName editor <> " is not authorized to modify article with ID: '" <> articleIdText
+    doLogRequest = Log.logInfo $ "User: '" <> editorName <> "' tries to modify article with ID: " <> articleIdText
+    doLogSuccess = Log.logInfo $ "User: '" <> editorName <> "' successfully updated article with ID: " <> articleIdText
+    doLogFail = Log.logWarning $ "User: '" <> editorName <> "' failed to modify article with ID: '" <> articleIdText
+    doLogUnauthorized = Log.logWarning $ "User: '" <> editorName <> "' is not authorized to modify article with ID: '" <> articleIdText
 
 
 updateArticleDB ::
