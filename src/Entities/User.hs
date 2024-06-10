@@ -46,7 +46,7 @@ deriving instance Show User
 deriving instance Eq User
 
 instance Table UserT where
-  data PrimaryKey UserT f = UserId (Columnar f Int32)
+  data PrimaryKey UserT f = UserId {unUserId :: Columnar f Int32}
     deriving (Generic, Beamable)
   primaryKey = UserId . _userId
 
