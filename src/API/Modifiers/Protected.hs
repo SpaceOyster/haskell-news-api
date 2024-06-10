@@ -99,11 +99,15 @@ newtype AdminUser = AdminUser {getAdminUser :: User}
 
 newtype AuthorUser = AuthorUser {getAuthorUser :: User}
 
+newtype OptionalAuthorUser = OptionalAuthorUser {getOptionalAuthorUser :: Maybe User}
+
 type instance AuthServerData (AuthProtect "any-user") = AnyUser
 
 type instance AuthServerData (AuthProtect "admin") = AdminUser
 
 type instance AuthServerData (AuthProtect "author") = AuthorUser
+
+type instance AuthServerData (AuthProtect "optional-author") = OptionalAuthorUser
 
 class ProtectionType typ where
   type AuthName typ :: Symbol
