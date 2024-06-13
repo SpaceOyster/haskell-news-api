@@ -61,6 +61,8 @@ type NewsAPI =
             'Tagged "category" (CI Text),
             'Tagged "is-published" Bool
           ]
+    :> QueryParam "search-title" Text
+    :> QueryParam "search-text" Text
     :> Get '[JSON] [ArticleJSON]
     :<|> Capture "id" Int32 :> Get '[JSON] ArticleJSON
     :<|> Protected AuthorUser :> Capture "id" Int32 :> ReqBody '[JSON] ArticleUpdateJSON :> PostCreated '[JSON] ArticleJSON
@@ -178,8 +180,10 @@ listArticles ::
        'Tagged "category" (CI Text),
        'Tagged "is-published" Bool
      ] ->
+  Maybe Text ->
+  Maybe Text ->
   m [ArticleJSON]
-listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq = do
+listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq searchTitleM searchTextM = do
   Log.logInfo $ "Get /news sort-by=" <> T.tshow (unSortingRequest sorting)
   xs <-
     DB.runQuery
@@ -197,6 +201,9 @@ listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq = do
       _articleIsPublished a ||. case usrM of
         Nothing -> val_ False
         Just u -> (unUserId (_articleAuthor a) ==. val_ (_userId u)) ||. val_ (_userIsAdmin u)
+    doSearch titleM textM = filter_ $ \a ->
+      maybe (val_ True) (\t -> _articleTitle a `like_` val_ ("%" <> t <> "%")) titleM
+        &&. maybe (val_ True) (\t -> _articleBody a `like_` val_ ("%" <> t <> "%")) textM
     fetchImageNames (article, authorName, _cat) = do
       imgs <-
         DB.runQuery
@@ -210,7 +217,7 @@ listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq = do
       catJSONM <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB)) (unCategoryId $ _articleCategory article)
       return (article, authorName, imgs, catJSONM)
     articleWithAuthorAndCategory = do
-      article <- hideUnpublished usrMaybe $ all_ $ _newsArticles newsDB
+      article <- doSearch searchTitleM searchTextM $ hideUnpublished usrMaybe $ all_ $ _newsArticles newsDB
       user <- related_ (_newsUsers newsDB) (_articleAuthor article)
       catM <- leftJoin_ (all_ $ _newsCategories newsDB) (\c -> just_ (pk c) ==. _articleCategory article)
       pure (article, _userName user, _categoryName catM)
