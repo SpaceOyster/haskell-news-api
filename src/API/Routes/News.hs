@@ -61,6 +61,7 @@ type NewsAPI =
             'Tagged "category" (CI Text),
             'Tagged "is-published" Bool
           ]
+    :> QueryParam "search-category" Text
     :> QueryParam "search-title" Text
     :> QueryParam "search-text" Text
     :> Get '[JSON] [ArticleJSON]
@@ -182,8 +183,9 @@ listArticles ::
      ] ->
   Maybe Text ->
   Maybe Text ->
+  Maybe Text ->
   m [ArticleJSON]
-listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq searchTitleM searchTextM = do
+listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq searchCategoryM searchTitleM searchTextM = do
   Log.logInfo $ "Get /news sort-by=" <> T.tshow (unSortingRequest sorting)
   xs <-
     DB.runQuery
@@ -201,9 +203,10 @@ listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq searchTi
       _articleIsPublished a ||. case usrM of
         Nothing -> val_ False
         Just u -> (unUserId (_articleAuthor a) ==. val_ (_userId u)) ||. val_ (_userIsAdmin u)
-    doSearch titleM textM = filter_ $ \a ->
+    doSearchArticle catM titleM textM = filter_ $ \a ->
       maybe (val_ True) (\t -> _articleTitle a `like_` val_ ("%" <> t <> "%")) titleM
         &&. maybe (val_ True) (\t -> _articleBody a `like_` val_ ("%" <> t <> "%")) textM
+        &&. maybe (val_ True) (\_ -> isJust_ $ _articleCategory a) catM
     fetchImageNames (article, authorName, _cat) = do
       imgs <-
         DB.runQuery
@@ -217,10 +220,11 @@ listArticles (OptionalAuthorUser usrMaybe) Pagination {..} sorting fReq searchTi
       catJSONM <- maybe (pure Nothing) (categoryWithParentsById (_newsCategories newsDB)) (unCategoryId $ _articleCategory article)
       return (article, authorName, imgs, catJSONM)
     articleWithAuthorAndCategory = do
-      article <- doSearch searchTitleM searchTextM $ hideUnpublished usrMaybe $ all_ $ _newsArticles newsDB
+      article <- doSearchArticle searchCategoryM searchTitleM searchTextM $ hideUnpublished usrMaybe $ all_ $ _newsArticles newsDB
       user <- related_ (_newsUsers newsDB) (_articleAuthor article)
+      let catFilter c = maybe (val_ True) (\cName -> cast_ c (varchar Nothing) `like_` val_ ("%" <> cName <> "%")) searchCategoryM
       catM <- leftJoin_ (all_ $ _newsCategories newsDB) (\c -> just_ (pk c) ==. _articleCategory article)
-      pure (article, _userName user, _categoryName catM)
+      filter_ (\(_, _, c) -> catFilter c) $ pure (article, _userName user, _categoryName catM)
     sorters (Article {..}, usrname, catName) =
       SortingApp
         ( sorterFor_ @"id" _articleId
