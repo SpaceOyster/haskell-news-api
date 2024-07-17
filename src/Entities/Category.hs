@@ -78,7 +78,7 @@ insertNewCategory table newcat = do
   where
     newCatName = CI.mk $ _newCategoryName newcat
     checkIfCategoryExists = do
-      yes <- categoryExists table newCatName
+      yes <- runQuery $ categoryExists table newCatName
       let msg = "Category \"" <> CI.original newCatName <> "\" already exists"
       when yes (throwM $ apiError msg)
     fetchParent parentName = do
@@ -87,14 +87,14 @@ insertNewCategory table newcat = do
       maybe (throwM $ apiError msg) pure parentM
 
 categoryExists ::
-  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  (MonadBeam Postgres m, Database Postgres db) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   CI Text ->
   m Bool
-categoryExists table catname = isJust <$> runQuery (lookupCategory table catname)
+categoryExists table catname = isJust <$> lookupCategory table catname
 
 lookupCategory ::
-  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   CI Text ->
   m (Maybe Category)
@@ -105,7 +105,7 @@ lookupCategory table catName =
     $ all_ table
 
 lookupCategoryId ::
-  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   Int32 ->
   m (Maybe Category)
@@ -113,7 +113,7 @@ lookupCategoryId table cId =
   runSelectReturningOne $ lookup_ table (CategoryId cId)
 
 lookupCategoryWithAncestors ::
-  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   CI Text ->
   m [Category]
@@ -127,7 +127,7 @@ lookupCategoryWithAncestors table catName =
     pure (reuse c)
 
 lookupCategoryIdWithAncestors ::
-  (MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   Int32 ->
   m [Category]
@@ -141,7 +141,7 @@ lookupCategoryIdWithAncestors table cId =
     pure (reuse c)
 
 lookupCategoryWithDescendants ::
-  (MonadDatabase m, MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   CI Text ->
   m [Category]
@@ -155,7 +155,7 @@ lookupCategoryWithDescendants table catName =
     pure (reuse c)
 
 lookupCategoryIdWithDescendants ::
-  (MonadDatabase m, MonadIO m, Database Postgres db, MonadBeam Postgres m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   Int32 ->
   m [Category]
