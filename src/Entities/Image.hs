@@ -116,7 +116,7 @@ selectImages table fns =
     . select
     . filter_
       ( \i ->
-          (_imageFileExtension i `in_` (val_ . fnExtension <$> fns))
-            &&. (_imageName i `in_` (val_ . fnName <$> fns))
+          concat_ [_imageName i, _imageFileExtension i]
+            `in_` (val_ . (\x -> fnName x <> fnExtension x) <$> fns)
       )
     $ all_ table
