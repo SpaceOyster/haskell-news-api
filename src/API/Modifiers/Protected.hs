@@ -121,23 +121,23 @@ type family AuthName typ :: Symbol where
 
 class ProtectionType typ where
   cons :: Proxy typ -> User -> typ
-  checkUser :: Proxy typ -> User -> Bool
   getUser :: typ -> User
+  checkUserPrivileges :: Proxy typ -> User -> Bool
 
 instance ProtectionType AnyUser where
   cons _ = AnyUser
-  checkUser _ _ = True
   getUser = getAnyUser
+  checkUserPrivileges _ _ = True
 
 instance ProtectionType AdminUser where
   cons _ = AdminUser
-  checkUser _ = _userIsAdmin
   getUser = getAdminUser
+  checkUserPrivileges _ = _userIsAdmin
 
 instance ProtectionType AuthorUser where
   cons _ = AuthorUser
-  checkUser _ u = _userIsAllowedToPost u || _userIsAdmin u
   getUser = getAuthorUser
+  checkUserPrivileges _ u = _userIsAllowedToPost u || _userIsAdmin u
 
 type AvailableAuthHandlers =
   '[ AuthHandler Request AnyUser,
@@ -171,7 +171,7 @@ strictAuthHandler ::
 strictAuthHandler prox pathText ba = do
   maybeUser <- lookupAccount ba
   usr <- maybe onUserNotFound onUserFound maybeUser
-  if checkUser prox usr
+  if checkUserPrivileges prox usr
     then pure (cons prox usr)
     else doOnUnauthorised usr
   where
