@@ -179,22 +179,45 @@ authHandlerAuthor :: AppEnv -> AuthHandler Request AuthorUser
 authHandlerAuthor = authHandlerBuilder (Proxy :: Proxy AuthorUser)
 
 authHandlerBuilder :: (ProtectionType typ) => Proxy typ -> AppEnv -> AuthHandler Request typ
-authHandlerBuilder prox env = mkAuthHandler handler
+authHandlerBuilder prox env =
+  mkAuthHandler $ \req -> do
+    let maybeBasicAuthData = decodeBAHdr req
+    let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
+    maybe (throwError err404) (appToHandler env . strictAuthHandler prox pathText) maybeBasicAuthData
+
+strictAuthHandler ::
+  (ProtectionType typ) =>
+  Proxy typ ->
+  T.Text ->
+  BasicAuthData ->
+  App typ
+strictAuthHandler prox pathText ba = do
+  maybeUser <- lookupAccount ba
+  usr <- maybe onUserNotFound onUserFound maybeUser
+  if checkUser prox usr
+    then pure (cons prox usr)
+    else doOnUnauthorised usr
   where
-    validate pathText ba = do
-      usr <- lookupAccount' ba
-      if checkUser prox usr
-        then pure (cons prox usr)
-        else doOnUnauthorised pathText usr
-    handler req = do
-      let maybeBasicAuthData = decodeBAHdr req
-      let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
-      maybe (throwError err404) (appToHandler env . validate pathText) maybeBasicAuthData
+    username = decodeUtf8 (basicAuthUsername ba)
+    pass = basicAuthPassword ba
     creatorLogin usr = CI.original (_userLogin usr)
-    doOnUnauthorised pathText usr = doLogUnauthorised pathText usr >> throwError err401
-    doLogUnauthorised pathText usr =
+    onUserFound user =
+      if checkPassword pass user
+        then onAuthorised user
+        else onWrongPassword
+    doOnUnauthorised usr = doLogUnauthorised usr >> throwError err401
+    onUserNotFound = doLogNoSuchUser >> throwError err404
+    onAuthorised user = doLogSuccess >> pure user
+    onWrongPassword = doLogWrongPassword >> throwError err404
+    doLogWrongPassword =
+      Log.logWarning $
+        "Auth: User \"" <> username <> "\" entered wrong password"
+    doLogNoSuchUser = Log.logWarning $ "Auth: User \"" <> username <> "\" not found"
+    doLogUnauthorised usr =
       Log.logWarning $
         "User \"" <> creatorLogin usr <> "\" is not authorised to access " <> pathText <> " route"
+    doLogSuccess =
+      Log.logInfo $ "Auth: User \"" <> username <> "\" successfully authorised"
 
 authHandlerOptionalAuthor :: AppEnv -> AuthHandler Request OptionalAuthorUser
 authHandlerOptionalAuthor env =
