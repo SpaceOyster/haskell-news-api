@@ -197,20 +197,37 @@ authHandlerBuilder prox env = mkAuthHandler handler
         "User \"" <> creatorLogin usr <> "\" is not authorised to access " <> pathText <> " route"
 
 authHandlerOptionalAuthor :: AppEnv -> AuthHandler Request OptionalAuthorUser
-authHandlerOptionalAuthor env = mkAuthHandler handler
+authHandlerOptionalAuthor env =
+  mkAuthHandler $ \req -> do
+    let maybeBasicAuthData = decodeBAHdr req
+    let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
+    maybe (pure $ OptionalAuthorUser Nothing) (appToHandler env . optionalAuthHandler pathText) maybeBasicAuthData
+
+optionalAuthHandler ::
+  T.Text ->
+  BasicAuthData ->
+  App OptionalAuthorUser
+optionalAuthHandler pathText ba = do
+  maybeUser <- lookupAccount ba
+  usrM <- maybe onUserNotFound onUserFound maybeUser
+  pure $ OptionalAuthorUser usrM
   where
-    validate pathText ba = do
-      usr <- lookupAccount ba
-      when (_userIsAllowedToPost usr || _userIsAdmin usr) (doLogAuthorised pathText usr)
-      pure (OptionalAuthorUser $ Just usr)
-    handler req = do
-      let maybeBasicAuthData = decodeBAHdr req
-      let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
-      maybe (pure $ OptionalAuthorUser Nothing) (appToHandler env . validate pathText) maybeBasicAuthData
+    username = decodeUtf8 (basicAuthUsername ba)
+    pass = basicAuthPassword ba
     creatorLogin usr = CI.original (_userLogin usr)
-    doLogAuthorised pathText usr =
-      Log.logInfo $
-        "User \"" <> creatorLogin usr <> "\" logged to " <> pathText <> " route"
+    onUserFound user =
+      if checkPassword pass user
+        then onAuthorised user
+        else onWrongPassword
+    onAuthorised user = doLogSuccess >> pure (Just user)
+    onWrongPassword = doLogWrongPassword >> pure Nothing
+    onUserNotFound = doLogNoSuchUser >> pure Nothing
+    doLogWrongPassword =
+      Log.logWarning $
+        "Auth: User \"" <> username <> "\" entered wrong password"
+    doLogNoSuchUser = Log.logWarning $ "Auth: Optional User \"" <> username <> "\" not found, proceeding as unauthenticated"
+    doLogSuccess =
+      Log.logInfo $ "Auth: Optional User \"" <> username <> "\" successfully authorised"
 
 authContext ::
   AppEnv ->
