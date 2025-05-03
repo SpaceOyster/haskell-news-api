@@ -108,8 +108,7 @@ instance Docs.ToAuthInfo Protected where
       "HTTP header \"Authorization: Basic <Base64 encoded \'username:password\'>\""
 
 instance
-  ( Docs.HasDocs api
-  ) =>
+  (Docs.HasDocs api) =>
   Docs.HasDocs (Protected pType :> api)
   where
   docsFor Proxy (endpoint, action) =
@@ -183,7 +182,7 @@ authHandlerBuilder :: (ProtectionType typ) => Proxy typ -> AppEnv -> AuthHandler
 authHandlerBuilder prox env = mkAuthHandler handler
   where
     validate pathText ba = do
-      usr <- lookupAccount ba
+      usr <- lookupAccount' ba
       if checkUser prox usr
         then pure (cons prox usr)
         else doOnUnauthorised pathText usr
@@ -192,10 +191,10 @@ authHandlerBuilder prox env = mkAuthHandler handler
       let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
       maybe (throwError err404) (appToHandler env . validate pathText) maybeBasicAuthData
     creatorLogin usr = CI.original (_userLogin usr)
+    doOnUnauthorised pathText usr = doLogUnauthorised pathText usr >> throwError err401
     doLogUnauthorised pathText usr =
       Log.logWarning $
         "User \"" <> creatorLogin usr <> "\" is not authorised to access " <> pathText <> " route"
-    doOnUnauthorised pathText usr = doLogUnauthorised pathText usr >> throwError err401
 
 authHandlerOptionalAuthor :: AppEnv -> AuthHandler Request OptionalAuthorUser
 authHandlerOptionalAuthor env = mkAuthHandler handler
