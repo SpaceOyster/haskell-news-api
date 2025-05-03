@@ -121,23 +121,23 @@ type family AuthName typ :: Symbol where
 
 class ProtectionType typ where
   cons :: Proxy typ -> User -> typ
-  getUser :: typ -> User
   checkUserPrivileges :: Proxy typ -> User -> Bool
+  decons :: typ -> User
 
 instance ProtectionType AnyUser where
   cons _ = AnyUser
-  getUser = getAnyUser
   checkUserPrivileges _ _ = True
+  decons = getAnyUser
 
 instance ProtectionType AdminUser where
   cons _ = AdminUser
-  getUser = getAdminUser
   checkUserPrivileges _ = _userIsAdmin
+  decons = getAdminUser
 
 instance ProtectionType AuthorUser where
   cons _ = AuthorUser
-  getUser = getAuthorUser
   checkUserPrivileges _ u = _userIsAllowedToPost u || _userIsAdmin u
+  decons = getAuthorUser
 
 type AvailableAuthHandlers =
   '[ AuthHandler Request AnyUser,
