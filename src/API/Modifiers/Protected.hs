@@ -27,29 +27,6 @@ import Servant.Server.Internal.BasicAuth
 
 type instance AuthServerData (AuthProtect "basic-auth") = User
 
-lookupAccount' :: BasicAuthData -> App User
-lookupAccount' basicAuthData = do
-  doLogAuthAttempt
-  maybeUser <- lookupUserLogin (DB._newsUsers DB.newsDB) username
-  maybe onUserNotFound onUserFound maybeUser
-  where
-    username = decodeUtf8 (basicAuthUsername basicAuthData)
-    pass = basicAuthPassword basicAuthData
-    onWrongPassword = doLogWrongPassword >> throwError err404
-    onAuthorised user = doLogSuccess >> pure user
-    onUserNotFound = doLogNoSuchUser >> throwError err404
-    onUserFound user =
-      if checkPassword pass user
-        then onAuthorised user
-        else onWrongPassword
-    doLogAuthAttempt = Log.logInfo $ "Auth: attempt for User \"" <> username <> "\""
-    doLogNoSuchUser = Log.logWarning $ "Auth: User \"" <> username <> "\" not found"
-    doLogWrongPassword =
-      Log.logWarning $
-        "Auth: User \"" <> username <> "\" entered wrong password"
-    doLogSuccess =
-      Log.logInfo $ "Auth: User \"" <> username <> "\" successfully authorised"
-
 lookupAccount :: BasicAuthData -> App (Maybe User)
 lookupAccount basicAuthData = do
   doLogAuthAttempt
@@ -266,4 +243,3 @@ authContext env =
     :. authHandlerAuthor env
     :. authHandlerOptionalAuthor env
     :. EmptyContext
-
