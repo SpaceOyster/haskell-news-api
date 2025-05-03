@@ -27,8 +27,8 @@ import Servant.Server.Internal.BasicAuth
 
 type instance AuthServerData (AuthProtect "basic-auth") = User
 
-lookupAccount :: BasicAuthData -> App User
-lookupAccount basicAuthData = do
+lookupAccount' :: BasicAuthData -> App User
+lookupAccount' basicAuthData = do
   doLogAuthAttempt
   maybeUser <- lookupUserLogin (DB._newsUsers DB.newsDB) username
   maybe onUserNotFound onUserFound maybeUser
@@ -49,6 +49,14 @@ lookupAccount basicAuthData = do
         "Auth: User \"" <> username <> "\" entered wrong password"
     doLogSuccess =
       Log.logInfo $ "Auth: User \"" <> username <> "\" successfully authorised"
+
+lookupAccount :: BasicAuthData -> App (Maybe User)
+lookupAccount basicAuthData = do
+  doLogAuthAttempt
+  lookupUserLogin (DB._newsUsers DB.newsDB) username
+  where
+    username = decodeUtf8 (basicAuthUsername basicAuthData)
+    doLogAuthAttempt = Log.logInfo $ "Auth: attempt for User \"" <> username <> "\""
 
 data Protected pType
 
