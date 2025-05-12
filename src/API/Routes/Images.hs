@@ -105,15 +105,14 @@ postImage (AuthorUser creator) multipartData =
   flip catch dealWithAPIError $ do
     let files = MP.files multipartData
     newImgsData <- forM files fileToNewImage
-    insertNewImages (_newsImages newsDB) newImgsData
-    doCheckForSuccess newImgsData
+    imgs <- insertNewImagesReturningList (_newsImages newsDB) newImgsData
+    doCheckForSuccess newImgsData imgs
   where
     creatorLogin = CI.original (_userLogin creator)
     dealWithAPIError e = case e of
       a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
       other -> throwM other
-    doCheckForSuccess newImgs = do
-      imgs <- selectImages (_newsImages newsDB) $ newImageFileName <$> newImgs
+    doCheckForSuccess newImgs imgs = do
       let unsavedImageFiles = fmap _imageFileName imgs \\ fmap newImageFileName newImgs
       if length imgs == length newImgs
         then doLogSuccess newImgs >> pure (ImageJSON <$> imgs)
