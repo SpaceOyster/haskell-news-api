@@ -16,7 +16,7 @@ import qualified DB
 import Data.CaseInsensitive as CI (original)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Extended as T
-import qualified Effects.Log as Log (logInfo, logWarning)
+import qualified Effects.Log as Log (logDebug, logInfo, logWarning)
 import Entities.User
 import GHC.TypeLits
 import Network.Wai
@@ -160,7 +160,14 @@ authHandlerBuilder prox env =
   mkAuthHandler $ \req -> do
     let maybeBasicAuthData = decodeBAHdr req
     let pathText = T.tshow $ requestMethod req <> " " <> rawPathInfo req
-    maybe (throwError err404) (appToHandler env . strictAuthHandler prox pathText) maybeBasicAuthData
+    appToHandler env $ maybe (onNoAuthData req) (strictAuthHandler prox pathText) maybeBasicAuthData
+  where
+    onNoAuthData req = do
+      let methodT = decodeUtf8 (requestMethod req)
+      let pathT = decodeUtf8 (rawPathInfo req)
+      Log.logWarning ("Request `" <> methodT <> " " <> pathT <> "` has no BasicAuth data.")
+      Log.logDebug ("Request: " <> T.tshow req)
+      throwError err404
 
 strictAuthHandler ::
   (ProtectionType typ) =>
