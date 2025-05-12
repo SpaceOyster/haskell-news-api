@@ -89,6 +89,24 @@ insertNewImages table imagesData = do
           _imageContent = val_ newImageDataContent
         }
 
+insertNewImagesReturningList ::
+  (MonadDatabase m) =>
+  DatabaseEntity Postgres db (TableEntity ImageT) ->
+  [NewImage] ->
+  m [Image]
+insertNewImagesReturningList table imagesData = do
+  runQuery . runInsertReturningList . insert table $
+    insertExpressions (imgDataToExpr <$> imagesData)
+  where
+    imgDataToExpr ni@(NewImage {..}) =
+      Image
+        { _imageId = default_,
+          _imageName = val_ $ newImageName ni,
+          _imageMimeType = val_ newImageMimeType,
+          _imageFileExtension = val_ $ newImageDataExtension ni,
+          _imageContent = val_ newImageDataContent
+        }
+
 selectImage ::
   (MonadDatabase m, Database Postgres db) =>
   DatabaseEntity Postgres db (TableEntity ImageT) ->
