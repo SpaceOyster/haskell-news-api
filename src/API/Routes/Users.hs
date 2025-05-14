@@ -236,7 +236,7 @@ addNewUser (AdminUser creator) (NewUserJSON newUser) = do
       APIError msg -> throwError $ err500 {errBody = fromStrict $ encodeUtf8 msg}
       other -> throwM other
     doCheckIfSuccessfull = do
-      newUserMaybe <- lookupUserLogin table newUserLogin
+      newUserMaybe <- DB.runQuery $ lookupUserLogin table newUserLogin
       case newUserMaybe of
         Nothing -> doLogDBError >> throwError err503
         Just u -> doLogSuccess >> return (UserJSON u)

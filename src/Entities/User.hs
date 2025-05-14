@@ -124,25 +124,24 @@ insertNewUser table NewUser {..} = do
       ]
   where
     checkIfLoginIsTaken login = do
-      yes <- isUserLoginTaken table login
+      yes <- runQuery $ isUserLoginTaken table login
       let msg = "Login \"" <> login <> "\" already exists"
       when yes (throwM $ apiError msg)
 
 isUserLoginTaken ::
-  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity UserT) ->
   T.Text ->
   m Bool
 isUserLoginTaken table login = isJust <$> lookupUserLogin table login
 
 lookupUserLogin ::
-  (MonadDatabase m, MonadIO m, Database Postgres db) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity UserT) ->
   T.Text ->
   m (Maybe User)
 lookupUserLogin table login =
-  runQuery
-    . runSelectReturningOne
+  runSelectReturningOne
     . select
     . filter_ (\u -> _userLogin u ==. val_ (CI.mk login))
     $ all_ table

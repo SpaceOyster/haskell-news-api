@@ -85,7 +85,7 @@ addRootUser = do
             _newUserIsAdmin = True,
             _newUserIsAllowedToPost = True
           }
-  userExists <- isUserLoginTaken (_newsUsers newsDB) rootLogin
+  userExists <- runQuery $ isUserLoginTaken (_newsUsers newsDB) rootLogin
   if userExists
     then Log.logInfo $ "Root user: '" <> rootLogin <> "' already exist, skipping DB insertion"
     else insertNewUser (_newsUsers newsDB) rootUserCredentials

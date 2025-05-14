@@ -16,6 +16,7 @@ import qualified DB
 import Data.CaseInsensitive as CI (original)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Extended as T
+import Effects.Database as DB
 import qualified Effects.Log as Log (logDebug, logInfo, logWarning)
 import Entities.User
 import GHC.TypeLits
@@ -30,7 +31,7 @@ type instance AuthServerData (AuthProtect "basic-auth") = User
 lookupAccount :: BasicAuthData -> App (Maybe User)
 lookupAccount basicAuthData = do
   doLogAuthAttempt
-  lookupUserLogin (DB._newsUsers DB.newsDB) username
+  DB.runQuery $ lookupUserLogin (DB._newsUsers DB.newsDB) username
   where
     username = decodeUtf8 (basicAuthUsername basicAuthData)
     doLogAuthAttempt = Log.logInfo $ "Auth: attempt for User \"" <> username <> "\""
