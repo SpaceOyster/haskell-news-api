@@ -34,6 +34,7 @@ import API.Modifiers.Sortable
   )
 import App.Error
 import App.Monad
+import Control.Monad (forM, when)
 import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
@@ -68,6 +69,7 @@ import Servant
   )
 import Servant.Docs as Docs (ToSample (toSamples))
 
+-- TODO: category update route
 type CategoriesAPI =
   Paginated
     :> SortableBy '["name", "parent"] ('Ascend "name")
@@ -78,7 +80,6 @@ type CategoriesAPI =
     :> Get '[JSON] [CategoryJSON]
     :<|> Protected AdminUser :> Capture "name" T.Text :> ReqBody '[JSON] CategoryUpdateJSON :> PostCreated '[JSON] CategoryJSON
     :<|> Protected AdminUser :> ReqBody '[JSON] NewCategoryJSON :> PostCreated '[JSON] CategoryJSON
-
 
 data CategoryJSON = CategoryJSON
   { _categoryJSONName :: CI T.Text,
@@ -240,6 +241,36 @@ postCategory (AdminUser usr) (NewCategoryJSON cat) = do
     doLogDBError =
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
+
+insertNewCategory ::
+  (MonadDatabase m, MonadIO m, Database Postgres db, MonadThrow m) =>
+  DatabaseEntity Postgres db (TableEntity CategoryT) ->
+  NewCategory ->
+  m ()
+insertNewCategory table newcat = do
+  checkIfCategoryExists
+  let maybeParent = CI.mk <$> _newCategoryParent newcat
+  parentM <- forM maybeParent fetchParent
+  runQuery
+    . runInsert
+    . insert table
+    $ insertExpressions
+      [ Category
+          { _categoryId = default_,
+            _categoryName = val_ newCatName,
+            _categoryParentCategory = val_ (maybe nothing_ (just_ . pk) parentM)
+          }
+      ]
+  where
+    newCatName = CI.mk $ _newCategoryName newcat
+    checkIfCategoryExists = do
+      yes <- runQuery $ categoryExists table newCatName
+      let msg = "Category \"" <> CI.original newCatName <> "\" already exists"
+      when yes (throwM $ apiError msg)
+    fetchParent parentName = do
+      parentM <- runQuery $ lookupCategory table parentName
+      let msg = "Parent Category \"" <> CI.original parentName <> "\" doesn't exist"
+      maybe (throwM $ apiError msg) pure parentM
 
 updateCategory ::
   ( DB.MonadDatabase m,
