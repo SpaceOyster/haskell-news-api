@@ -50,7 +50,7 @@ getImage ::
 getImage fileNameT = flip catch dealWithAPIError $ do
   Log.logInfo $ "Image requested: " <> fileNameT
   fileName <- parseFileName' fileNameT -- TODO: throw err404 here
-  imgMaybe <- selectImage (_newsImages newsDB) fileName
+  imgMaybe <- DB.runQuery $ selectImage (_newsImages newsDB) fileName
   case imgMaybe of
     Nothing -> doLogNotFound >> throwError err404
     Just img -> doLogFound >> doReturnImage img
@@ -105,7 +105,7 @@ postImage (AuthorUser creator) multipartData =
   flip catch dealWithAPIError $ do
     let files = MP.files multipartData
     newImgsData <- forM files fileToNewImage
-    imgs <- insertNewImagesReturningList (_newsImages newsDB) newImgsData
+    imgs <- DB.runQuery $ insertNewImagesReturningList (_newsImages newsDB) newImgsData
     doCheckForSuccess newImgsData imgs
   where
     creatorLogin = CI.original (_userLogin creator)

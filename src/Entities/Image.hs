@@ -13,8 +13,8 @@ import Data.ByteString
 import Data.Int
 import Data.Text.Extended as T
 import Database.Beam
+import Database.Beam.Backend.SQL.BeamExtensions (MonadBeamInsertReturning, runInsertReturningList)
 import Database.Beam.Postgres
-import Effects.Database as DB
 
 data ImageT f = Image
   { _imageId :: Columnar f Int32,
@@ -72,12 +72,12 @@ newImageDataExtension :: NewImage -> Text
 newImageDataExtension = fnExtension . newImageFileName
 
 insertNewImages ::
-  (MonadDatabase m) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity ImageT) ->
   [NewImage] ->
   m ()
 insertNewImages table imagesData = do
-  runQuery . runInsert . insert table $
+  runInsert . insert table $
     insertExpressions (imgDataToExpr <$> imagesData)
   where
     imgDataToExpr ni@(NewImage {..}) =
@@ -90,12 +90,15 @@ insertNewImages table imagesData = do
         }
 
 insertNewImagesReturningList ::
-  (MonadDatabase m) =>
+  ( Database Postgres db,
+    MonadBeam Postgres m,
+    MonadBeamInsertReturning Postgres m
+  ) =>
   DatabaseEntity Postgres db (TableEntity ImageT) ->
   [NewImage] ->
   m [Image]
 insertNewImagesReturningList table imagesData = do
-  runQuery . runInsertReturningList . insert table $
+  runInsertReturningList . insert table $
     insertExpressions (imgDataToExpr <$> imagesData)
   where
     imgDataToExpr ni@(NewImage {..}) =
@@ -108,13 +111,12 @@ insertNewImagesReturningList table imagesData = do
         }
 
 selectImage ::
-  (MonadDatabase m, Database Postgres db) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity ImageT) ->
   FileName ->
   m (Maybe (ImageT Identity))
 selectImage table fn =
-  DB.runQuery
-    . runSelectReturningOne
+  runSelectReturningOne
     . select
     . filter_
       ( \i ->
@@ -124,13 +126,12 @@ selectImage table fn =
     $ all_ table
 
 selectImages ::
-  (MonadDatabase m, Database Postgres db) =>
+  (Database Postgres db, MonadBeam Postgres m) =>
   DatabaseEntity Postgres db (TableEntity ImageT) ->
   [FileName] ->
   m [Image]
 selectImages table fns =
-  DB.runQuery
-    . runSelectReturningList
+  runSelectReturningList
     . select
     . filter_
       ( \i ->
