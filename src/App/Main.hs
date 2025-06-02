@@ -97,8 +97,13 @@ usagePrompt =
     "\n"
     [ "haskell-news-api - simple API for news service",
       mempty,
-      "Usage: haskell-news-api FILE",
+      "Usage: haskell-news-api --help",
+      "   or: haskell-news-api --initiate-db FILE",
+      "   or: haskell-news-api FILE",
       mempty,
+      "--help - show this prompt.",
+      "--initiate-db - constructs required DB structure.",
+      "<no-argument> - runs server app.",
       "FILE - is a config file."
     ]
 
