@@ -37,7 +37,9 @@ type ImagesAPI =
 images :: ServerT ImagesAPI App
 images = getImage :<|> postImage
 
--- TODO: 'Content-Type' header is duplicated
+-- TODO: 'Content-Type' header is duplicated, can be solved by defining custom
+-- content type instead of 'OctetStream' (requires Accept, MimeRender and
+-- MimeUnrender instances). Not a priority.
 getImage ::
   ( DB.MonadDatabase m,
     Log.MonadLog m,
@@ -49,7 +51,7 @@ getImage ::
   m (Headers '[Header "Content-Type" String, Header "Content-Length" Integer] BS.ByteString)
 getImage fileNameT = flip catch dealWithAPIError $ do
   Log.logInfo $ "Image requested: " <> fileNameT
-  fileName <- parseFileName' fileNameT -- TODO: throw err404 here
+  fileName <- catch (parseFileName' fileNameT) onFilenameParseError
   imgMaybe <- DB.runQuery $ selectImage (_newsImages newsDB) fileName
   case imgMaybe of
     Nothing -> doLogNotFound >> throwError err404
@@ -63,6 +65,9 @@ getImage fileNameT = flip catch dealWithAPIError $ do
         $ _imageContent
     dealWithAPIError e = case e of
       a@(APIError msg) -> Log.logWarning (T.tshow a) >> throwError err500 {errBody = T.textToLBS msg}
+      other -> throwM other
+    onFilenameParseError e = case e of
+      a@(APIError _) -> Log.logWarning (T.tshow a) >> throwError err404 {errBody = "No such file."}
       other -> throwM other
     doLogNotFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" not found"
     doLogFound = Log.logInfo $ "Image \"" <> fileNameT <> "\" found and returned"
@@ -91,6 +96,8 @@ fileToNewImage file = do
   newImageFileName <- parseFileName' fileName
   pure $ NewImage {..}
 
+-- TODO: check for duplicate existing in DB, currently same image is inserted
+-- even if it is already present in DB. Not a priority.
 postImage ::
   ( Monad m,
     MonadDatabase m,
