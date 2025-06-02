@@ -44,6 +44,7 @@ library
       App.Env
       App.Error
       App.Main
+      App.Migrations
       App.Monad
       Data.Text.Extended
       DB
