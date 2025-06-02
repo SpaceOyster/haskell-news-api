@@ -35,6 +35,13 @@ main = do
     uncaughtExceptions e =
       Exit.die $ "Uncaught Exception: " <> show e <> "\nClosing application."
 
+data RunMode
+  = RunApp C.AppConfig
+  | InitiateDB C.AppConfig
+  | HelpInfo
+  | InvalidParameters
+  deriving (Show)
+
 readConfig :: IO C.AppConfig
 readConfig = do
   cfgPath : _xs <- E.getArgs
