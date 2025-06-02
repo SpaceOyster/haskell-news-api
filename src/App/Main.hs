@@ -9,12 +9,15 @@ import App.Config
 import qualified App.Config as C
 import App.Env (Env (Env, envConfig, envDatabase, envLogger))
 import App.Error
+import App.Migrations (initiateDBStructure)
 import App.Monad (AppEnv, runApp)
 import Control.Monad.Catch (MonadThrow, SomeException, catch, catchAll)
 import Control.Monad.IO.Class
 import DB
 import Data.Function ((&))
 import Data.List (intercalate)
+import qualified Database.PostgreSQL.Simple as PG
+import Database.PostgreSQL.Simple.Migration (MigrationResult (MigrationError, MigrationSuccess))
 import Effects.Config
 import Effects.Database
 import Effects.Log as Log
@@ -23,7 +26,7 @@ import Handlers.Database
 import Handlers.Logger as Logger
 import Network.Wai.Handler.Warp (run)
 import qualified System.Environment as E
-import qualified System.Exit as Exit (die)
+import qualified System.Exit as Exit (die, exitFailure, exitSuccess)
 
 main :: IO ()
 main = do
@@ -63,6 +66,23 @@ runWithApp cfg =
     let port = cfg & C.serverConfig & C.port
     _ <- runApp addRootUser env
     run port (app env)
+
+runAppMode :: RunMode -> IO ()
+runAppMode HelpInfo = print usagePrompt >> Exit.exitSuccess
+runAppMode InvalidParameters = print usagePrompt >> Exit.exitFailure
+runAppMode (RunApp cfg) =
+  Logger.withHandle (loggerConfig cfg) $ \hLog -> do
+    env <- initiateEnv hLog cfg
+    let port = cfg & C.serverConfig & C.port
+    _ <- runApp addRootUser env
+    run port (app env)
+runAppMode (InitiateDB cfg) =
+  Logger.withHandle (loggerConfig cfg) $ \hLog -> do
+    dbconnection <- PG.connect $ C.postgresConfig cfg
+    migrationResult <- initiateDBStructure hLog dbconnection
+    case migrationResult of
+      MigrationSuccess -> putStrLn "Database initiated successfully." >> Exit.exitSuccess
+      MigrationError e -> putStrLn ("Failure:\n" <> show e) >> Exit.exitFailure
 
 initiateEnv :: Logger.Handle -> C.AppConfig -> IO AppEnv
 initiateEnv hLog cfg = do
