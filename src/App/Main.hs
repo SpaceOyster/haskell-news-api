@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -41,6 +42,14 @@ data RunMode
   | HelpInfo
   | InvalidParameters
   deriving (Show)
+
+parseArguments :: IO RunMode
+parseArguments =
+  E.getArgs >>= \case
+    "--initiate-db" : cfgPath : _ -> InitiateDB <$> C.readConfigFromFile cfgPath
+    "--help" : _ -> pure HelpInfo
+    cfgPath : _ -> RunApp <$> C.readConfigFromFile cfgPath
+    _ -> pure InvalidParameters
 
 readConfig :: IO C.AppConfig
 readConfig = do
