@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -78,6 +78,8 @@ library
     , http-types
     , mtl
     , parsec
+    , postgresql-migration
+    , postgresql-simple
     , random
     , servant
     , servant-docs
@@ -111,6 +113,8 @@ executable haskell-news-api-exe
     , http-types
     , mtl
     , parsec
+    , postgresql-migration
+    , postgresql-simple
     , random
     , servant
     , servant-docs
@@ -150,6 +154,8 @@ test-suite haskell-news-api-test
     , http-types
     , mtl
     , parsec
+    , postgresql-migration
+    , postgresql-simple
     , random
     , servant
     , servant-docs

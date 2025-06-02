@@ -42,6 +42,8 @@ dependencies:
 - http-types
 - servant-docs
 - servant-multipart
+- postgresql-simple
+- postgresql-migration
 
 library:
   source-dirs: src
