@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS articles (
     id serial PRIMARY KEY,
     title text NOT NULL,
-    created_at timestampt with time zone NOT NULL DEFAULT NOW(),
+    created_at timestamp with time zone NOT NULL DEFAULT NOW(),
     author integer REFERENCES users (id) ON DELETE CASCADE NOT NULL,
     category citext REFERENCES categories (name) ON DELETE SET NULL,
     body text NOT NULL,
