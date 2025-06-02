@@ -31,13 +31,10 @@ import qualified System.Exit as Exit (die, exitFailure, exitSuccess)
 main :: IO ()
 main = do
   runMode <- parseArguments `catch` configException
-  runAppMode runMode `catchAll` uncaughtExceptions
+  runAppMode runMode
   where
     configException :: AppError -> IO RunMode
     configException e = Exit.die $ "Failed to read config file:" <> show e
-    uncaughtExceptions :: SomeException -> IO ()
-    uncaughtExceptions e =
-      Exit.die $ "Uncaught Exception: " <> show e <> "\nClosing application."
 
 data RunMode
   = RunApp C.AppConfig
