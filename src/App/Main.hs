@@ -30,10 +30,10 @@ import qualified System.Exit as Exit (die, exitFailure, exitSuccess)
 
 main :: IO ()
 main = do
-  cfg <- readConfig `catch` configException
-  runWithApp cfg `catchAll` uncaughtExceptions
+  runMode <- parseArguments `catch` configException
+  runAppMode runMode `catchAll` uncaughtExceptions
   where
-    configException :: AppError -> IO AppConfig
+    configException :: AppError -> IO RunMode
     configException e = Exit.die $ "Failed to read config file:" <> show e
     uncaughtExceptions :: SomeException -> IO ()
     uncaughtExceptions e =
