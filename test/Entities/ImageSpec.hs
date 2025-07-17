@@ -7,8 +7,6 @@ module Entities.ImageSpec (spec) where
 
 import Control.Monad.State.Lazy
 import Data.Text.Extended as T
-import Database.Beam
-import Database.Beam.Postgres
 import Entities.Image
 import Test.Arbitrary.Text
 import Test.Hspec
