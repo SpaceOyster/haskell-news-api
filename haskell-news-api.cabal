@@ -135,7 +135,6 @@ test-suite haskell-news-api-test
       Data.Text.ExtendedSpec
       Entities.CategorySpec
       Entities.UserSpec
-      Test.Arbitrary.Image
       Test.Arbitrary.String
       Test.Arbitrary.Text
       Paths_haskell_news_api
