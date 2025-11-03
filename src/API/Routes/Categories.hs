@@ -69,7 +69,6 @@ import Servant
   )
 import Servant.Docs as Docs (ToSample (toSamples))
 
--- TODO: category update route
 type CategoriesAPI =
   Paginated
     :> SortableBy '["name", "parent"] ('Ascend "name")
@@ -222,7 +221,7 @@ postCategory ::
   NewCategoryJSON ->
   m CategoryJSON
 postCategory (AdminUser usr) (NewCategoryJSON cat) = do
-  flip catch dealWithAPIerror $ insertNewCategory table cat
+  flip catch dealWithAPIerror $ insertNewCategoryDB table cat
   doCheckIfSuccessfull
   where
     table = _newsCategories newsDB
@@ -242,12 +241,12 @@ postCategory (AdminUser usr) (NewCategoryJSON cat) = do
       Log.logWarning $
         "Category \"" <> T.tshow cat <> "\" was not added to Database"
 
-insertNewCategory ::
+insertNewCategoryDB ::
   (MonadDatabase m, MonadIO m, Database Postgres db, MonadThrow m) =>
   DatabaseEntity Postgres db (TableEntity CategoryT) ->
   NewCategory ->
   m ()
-insertNewCategory table newcat = do
+insertNewCategoryDB table newcat = do
   checkIfCategoryExists
   let maybeParent = CI.mk <$> _newCategoryParent newcat
   parentM <- forM maybeParent fetchParent
