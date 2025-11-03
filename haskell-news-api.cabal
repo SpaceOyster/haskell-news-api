@@ -131,6 +131,7 @@ test-suite haskell-news-api-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      API.Modifiers.FilterableSpec
       Data.Text.ExtendedSpec
       Test.Arbitrary.Image
       Test.Arbitrary.String
