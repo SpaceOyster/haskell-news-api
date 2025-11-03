@@ -75,7 +75,7 @@ data PasswordHash = PasswordHash
     _passwordHashIterations :: Int32,
     _passwordHashSalt :: BS.ByteString
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 generateHash :: (MonadIO m) => BS.ByteString -> m PasswordHash
 generateHash pwd = liftIO $ do
