@@ -19,6 +19,8 @@ module API.Modifiers.Filterable
     Tagged (..),
     Filter (..),
     Predicate (..),
+    predicateParser,
+    predicateList,
   )
 where
 
@@ -77,11 +79,14 @@ predicateParser :: Parsec.Parsec T.Text st Predicate
 predicateParser =
   Parsec.choice
     [ Parsec.string "eq" >> pure Equals,
-      Parsec.string "lt" >> pure LessThan,
-      Parsec.string "gt" >> pure GreaterThan,
-      Parsec.string "neq" >> pure (Not Equals),
-      (Parsec.string "nlt" <|> Parsec.string "gte") >> pure (Not LessThan),
-      (Parsec.string "ngt" <|> Parsec.string "lte") >> pure (Not GreaterThan)
+      Parsec.string "lt" >> Parsec.choice [Parsec.char 'e' >> pure (Not GreaterThan), pure LessThan],
+      Parsec.string "gt" >> Parsec.choice [Parsec.char 'e' >> pure (Not LessThan), pure GreaterThan],
+      Parsec.char 'n'
+        >> Parsec.choice
+          [ Parsec.string "eq" >> pure (Not Equals),
+            Parsec.string "lt" >> pure (Not LessThan),
+            Parsec.string "gt" >> pure (Not GreaterThan)
+          ]
     ]
 
 class FilterValue a where
@@ -95,6 +100,23 @@ instance {-# OVERLAPS #-} FilterValue (CI String) where
 
 instance {-# OVERLAPS #-} FilterValue (CI T.Text) where
   parseFilterValue = fmap CI.mk . parseQueryParam
+
+data Filter (tag :: Symbol) a = Filter
+  { getPredicate :: Predicate,
+    getValue :: a
+  }
+
+instance (Show a, KnownSymbol tag, Typeable a) => Show (Filter tag a) where
+  show (Filter p v) =
+    concat
+      [ "(Filter { getPredicate = ",
+        show p,
+        ", getValue = ",
+        show v,
+        "} :: ",
+        show $ typeRep $ Proxy @(Filter tag a),
+        ")"
+      ]
 
 filterQueryKeyParser ::
   forall tag a st.
@@ -157,23 +179,6 @@ instance
     eFilters <- parseQueryText @ftag @ftyp qt
     eRemainFilt <- parseFiltersFromQueryText @fs qt
     return $ eFilters `FiltReqCons` eRemainFilt
-
-data Filter (tag :: Symbol) a = Filter
-  { getPredicate :: Predicate,
-    getValue :: a
-  }
-
-instance (Show a, KnownSymbol tag, Typeable a) => Show (Filter tag a) where
-  show (Filter p v) =
-    concat
-      [ "(Filter { getPredicate = ",
-        show p,
-        ", getValue = ",
-        show v,
-        "} :: ",
-        show $ typeRep $ Proxy @(Filter tag a),
-        ")"
-      ]
 
 data FilterableBy (a :: [Tagged Type])
 
