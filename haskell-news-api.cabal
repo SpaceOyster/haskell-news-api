@@ -133,6 +133,7 @@ test-suite haskell-news-api-test
   other-modules:
       API.Modifiers.FilterableSpec
       Data.Text.ExtendedSpec
+      Entities.CategorySpec
       Test.Arbitrary.Image
       Test.Arbitrary.String
       Test.Arbitrary.Text
