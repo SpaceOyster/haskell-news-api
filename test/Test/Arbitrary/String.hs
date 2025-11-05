@@ -6,7 +6,6 @@ import Test.QuickCheck
     listOf,
     listOf1,
     resize,
-    suchThat,
   )
 
 alphaChars :: [Char]
@@ -22,7 +21,7 @@ unreservedURIChars :: [Char]
 unreservedURIChars = alphaNumChars <> "-_.~"
 
 newtype AlphaNumString = AlphaNumString {getAlphaNumString :: String}
-  deriving Show
+  deriving (Show)
 
 instance Arbitrary AlphaNumString where
   arbitrary = AlphaNumString <$> listOf (elements alphaNumChars)
